@@ -1,0 +1,116 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { Send, Sparkles, Menu, Plus, Clock, Zap, Moon, Sun, Paperclip, X, FileText, File, Cpu, Cloud } from 'lucide-react';
+
+// Types
+interface Message {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: Date;
+  files?: UploadedFile[];
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  timestamp: Date;
+}
+
+interface UploadedFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url?: string;
+}
+
+type ModelType = 'local' | 'api';
+
+// Typing Indicator Component
+const TypingIndicator = () => (
+  <div className="flex items-center gap-1 px-4 py-3 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-2xl max-w-[100px] shadow-sm">
+    <div className="flex gap-1">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="w-2 h-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full animate-bounce"
+          style={{
+            animationDelay: \`\${i * 0.15}s\`,
+            animationDuration: '1s'
+          }}
+        />
+      ))}
+    </div>
+  </div>
+);
+
+// File Preview Component
+const FilePreview = ({ file, onRemove }: { file: UploadedFile; onRemove: () => void }) => {
+  const getFileIcon = () => {
+    if (file.type.startsWith('image/')) return <FileText className="w-5 h-5" />;
+    if (file.type.includes('pdf')) return <FileText className="w-5 h-5" />;
+    return <File className="w-5 h-5" />;
+  };
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  return (
+    <div className="relative group flex items-center gap-2 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-3 py-2 rounded-lg border border-purple-200 dark:border-purple-800">
+      <div className="text-purple-600 dark:text-purple-400">
+        {getFileIcon()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+          {file.name}
+        </p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {formatSize(file.size)}
+        </p>
+      </div>
+      <button
+        onClick={onRemove}
+        className="flex-shrink-0 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-full transition-colors"
+      >
+        <X className="w-4 h-4 text-red-500" />
+      </button>
+    </div>
+  );
+};
+
+// Model Selector Component
+const ModelSelector = ({ 
+  currentModel, 
+  onModelChange 
+}: { 
+  currentModel: ModelType; 
+  onModelChange: (model: ModelType) => void;
+}) => (
+  <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-xl p-1 shadow-md border border-gray-200 dark:border-gray-700">
+    <button
+      onClick={() => onModelChange('local')}
+      className={\`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 \${
+        currentModel === 'local'
+          ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg'
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+      }\`}
+    >
+      <Cpu className="w-4 h-4" />
+      <span className="text-sm font-medium">Muayad</span>
+    </button>
+    <button
+      onClick={() => onModelChange('api')}
+      className={\`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 \${
+        currentModel === 'api'
+          ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-lg'
+          : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+      }\`}
+    >
+      <Cloud className="w-4 h-4" />
+      <span className="text-sm font-medium">نموذج سحابي</span>
+    </button>
+  </div>
+);
