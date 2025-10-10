@@ -80,12 +80,28 @@ export default function ChatWindow() {
       };
       
       setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      
+      let errorContent = 'عذراً، حدث خطأ في إرسال الرسالة. يرجى المحاولة مرة أخرى.';
+      
+      // Handle specific errors
+      if (error.response?.status === 401) {
+        errorContent = '🔒 يرجى تسجيل الدخول للمتابعة';
+      } else if (error.response?.status === 429) {
+        errorContent = '⏳ وصلت للحد الأقصى من الرسائل. يرجى الانتظار قليلاً';
+      } else if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        errorContent = '⏱️ انتهت المهلة المحددة. يرجى المحاولة مرة أخرى';
+      } else if (error.code === 'ERR_NETWORK' || !error.response) {
+        errorContent = '🌐 فشل الاتصال بالسيرفر. تأكد من اتصالك بالإنترنت';
+      } else if (error.response?.data?.detail) {
+        errorContent = `❌ ${error.response.data.detail}`;
+      }
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'عذراً، حدث خطأ في إرسال الرسالة. يرجى المحاولة مرة أخرى.',
+        content: errorContent,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);

@@ -1,0 +1,50 @@
+# Emergency fallback docker-compose.yml
+# Uses pre-built images to avoid build issues entirely
+
+version: "3.9"
+
+name: oqool_emergency
+
+services:
+  api:
+    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
+    env_file: .env
+    environment:
+      - MODULE_NAME=main
+      - VARIABLE_NAME=app
+      - PORT=8000
+      - WORKERS_PER_CORE=1
+      - MAX_WORKERS=2
+    volumes:
+      - ./backend:/app
+    restart: unless-stopped
+    expose:
+      - "8000"
+    command: >
+      sh -c "
+        pip install --no-cache-dir --only-binary=:all: 
+        fastapi==0.104.1 
+        uvicorn==0.24.0 
+        python-dotenv==1.0.0 
+        httpx==0.25.2 
+        pydantic==2.5.3 
+        psycopg2-binary==2.9.9 &&
+        uvicorn main:app --host 0.0.0.0 --port 8000
+      "
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:

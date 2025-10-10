@@ -1,0 +1,89 @@
+# ─────────────────────────────────────────────────────────
+# docker-compose.yml
+# Services: api (FastAPI), caddy (reverse proxy + TLS)
+# Usage:
+#   1) Fill .env from .env.example
+#   2) docker compose up -d --build
+# DNS: point api.oqool.net -> VPS public IP (A record in Cloudflare)
+# Open ports 80,443 on the droplet. Caddy will fetch certs automatically.
+# ─────────────────────────────────────────────────────────
+
+version: "3.9"
+
+name: oqool_vps
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      - PORT=8000
+      - UVICORN_WORKERS=2
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+version: "3.9"
+
+name: oqool_vps
+
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.alpine
+    env_file: .env
+    environment:
+      - PORT=8000
+      - UVICORN_WORKERS=1
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
