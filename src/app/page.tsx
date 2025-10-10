@@ -172,18 +172,28 @@ export default function ChatPage() {
     setInputValue('');
     setIsTyping(true);
 
-    // TODO: Connect to Claude API
-    // For now, simulate AI response
-    setTimeout(() => {
+    // إرسال للـ API الحقيقي
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: inputValue }),
+      });
+      
+      const data = await response.json();
+      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'شكراً لسؤالك! هذا رد تجريبي. قريباً سيتم ربط النظام بـ Claude 3.5 Sonnet للحصول على استشارات طبية دقيقة ومتخصصة. 🏥✨',
+        content: data.message,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, aiMessage]);
       setIsTyping(false);
-    }, 2000);
+    } catch (error) {
+      console.error('Error:', error);
+      setIsTyping(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -310,7 +320,7 @@ export default function ChatPage() {
       </div>
 
       {/* CSS Animation */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeIn {
           from {
             opacity: 0;
