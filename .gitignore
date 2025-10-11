@@ -2,7 +2,9 @@ node_modules
 .next
 .env.local
 *.log
+*.zip
 .vercel
+build/
 
 #amplify-do-not-edit-begin
 amplify/\#current-cloud-backend
