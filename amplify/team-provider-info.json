@@ -1,0 +1,23 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-oqoolai-dev-1654a-authRole",
+      "UnauthRoleArn": "arn:aws:iam::060795908171:role/amplify-oqoolai-dev-1654a-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::060795908171:role/amplify-oqoolai-dev-1654a-authRole",
+      "Region": "eu-west-1",
+      "DeploymentBucketName": "amplify-oqoolai-dev-1654a-deployment",
+      "UnauthRoleName": "amplify-oqoolai-dev-1654a-unauthRole",
+      "StackName": "amplify-oqoolai-dev-1654a",
+      "StackId": "arn:aws:cloudformation:eu-west-1:060795908171:stack/amplify-oqoolai-dev-1654a/219d80e0-a6bf-11f0-9ebe-0259d628adb9",
+      "AmplifyAppId": "d1crctfeiqoa3y"
+    },
+    "categories": {
+      "hosting": {
+        "amplifyhosting": {
+          "appId": "d1crctfeiqoa3y",
+          "type": "manual"
+        }
+      }
+    }
+  }
+}

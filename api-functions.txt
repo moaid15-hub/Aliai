@@ -1,0 +1,57 @@
+  // وظيفة محسّنة للدردشة مع Claude AI
+  const handleSendWithAPI = async (userMessage: string): Promise<string> => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: userMessage
+            }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success) {
+        return data.message;
+      } else {
+        throw new Error(data.error || 'خطأ في الاستجابة');
+      }
+    } catch (error) {
+      console.error('خطأ في API:', error);
+      // العودة للنظام المحلي في حالة الخطأ
+      return getLocalAIResponse(userMessage);
+    }
+  };
+
+  // النظام المحلي البديل
+  const getLocalAIResponse = (userMessage: string): string => {
+    const responses: { [key: string]: string } = {
+      'مرحبا': 'مرحباً بك! أنا عقول، مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟',
+      'السلام عليكم': 'وعليكم السلام ورحمة الله وبركاته! أهلاً وسهلاً بك.',
+      'ما اسمك': 'اسمي عقول، وأنا مساعد ذكي مطور خصيصاً للمستخدمين العرب.',
+      'كيف حالك': 'أنا بأفضل حال، شكراً لك! جاهز لمساعدتك في أي موضوع.',
+      'ساعدني': 'بالطبع! أخبرني بالضبط ماذا تحتاج وسأقدم لك أفضل المساعدة الممكنة.',
+      'البرمجة': 'البرمجة عالم رائع! 💻 يمكنني مساعدتك في تعلم لغات البرمجة المختلفة.',
+    };
+
+    const userLower = userMessage.toLowerCase().trim();
+    
+    for (const [keyword, response] of Object.entries(responses)) {
+      if (userLower.includes(keyword)) {
+        return response;
+      }
+    }
+
+    return `شكراً لك على سؤالك: "${userMessage}". أنا هنا لمساعدتك! يمكنك سؤالي عن البرمجة، التطوير، أو أي موضوع تقني آخر.`;
+  };
