@@ -1,6 +1,7 @@
 'use client';
 
 import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
   return (
@@ -63,21 +64,21 @@ export default function Home() {
           
           {/* أزرار التنقل */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <a
+            <Link
               href="/auth/register"
               className="group px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden"
             >
               <span className="relative z-10">إنشاء حساب جديد</span>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </a>
+            </Link>
             
-            <a
+            <Link
               href="/auth/login"
               className="group px-8 py-4 bg-white text-purple-600 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-purple-200 hover:border-purple-300 relative overflow-hidden"
             >
               <span className="relative z-10">تسجيل الدخول</span>
               <div className="absolute inset-0 bg-gradient-to-r from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            </a>
+            </Link>
           </div>
           
           {/* ميزات سريعة */}
