@@ -1,33 +1,16 @@
-version: 1version: 1
-
-frontend:frontend:
-
-  phases:  phases:
-
-    preBuild:    preBuild:
-
-      commands:      commands:
-
-        - npm ci        - npm ci
-
-    build:    build:
-
-      commands:      commands:
-
-        - npm run build        - npm run build
-
-  artifacts:  artifacts:
-
-    baseDirectory: out    baseDirectory: .next
-
-    files:    files:
-
-      - '**/*'      - '**/*'
-
-  cache:  cache:
-
-    paths:    paths:
-
-      - node_modules/**/*      - node_modules/**/*
-
-      - .next/cache/**/*
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: out
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
