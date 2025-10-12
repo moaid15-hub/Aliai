@@ -65,7 +65,7 @@ export default function Home() {
           {/* أزرار التنقل */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link
-              href="/auth/register"
+              href="/auth/register/"
               className="group px-8 py-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 relative overflow-hidden"
             >
               <span className="relative z-10">إنشاء حساب جديد</span>
@@ -73,7 +73,7 @@ export default function Home() {
             </Link>
             
             <Link
-              href="/auth/login"
+              href="/auth/login/"
               className="group px-8 py-4 bg-white text-purple-600 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 border-2 border-purple-200 hover:border-purple-300 relative overflow-hidden"
             >
               <span className="relative z-10">تسجيل الدخول</span>
