@@ -72,7 +72,7 @@ export default function LoginPage() {
         localStorage.setItem('user', JSON.stringify(mockUserData.user));
 
         console.log('نجح تسجيل الدخول:', mockUserData);
-        window.location.href = '/chat';
+        window.location.href = '/chat/';
         return;
       }
 
@@ -101,7 +101,7 @@ export default function LoginPage() {
       const data = await response.json();
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      window.location.href = '/chat';
+      window.location.href = '/chat/';
       */
 
     } catch (err: any) {

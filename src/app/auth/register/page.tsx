@@ -74,7 +74,7 @@ export default function RegisterPage() {
       
       // الانتقال المباشر للدردشة
       setTimeout(() => {
-        window.location.href = '/chat';
+        window.location.href = '/chat/';
       }, 1500);
 
       /* 
