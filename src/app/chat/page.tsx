@@ -1,8 +1,59 @@
-// ...existing code before view mode toggle...
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Send, Sparkles, Menu, Plus, Clock, Moon, Sun, LogOut, User, Paperclip } from "lucide-react";
+import { Send, Sparkles, Menu, Plus, Clock, Moon, Sun, LogOut, User, Paperclip, ExternalLink } from "lucide-react";
+
+// كلمات مفتاحية للبحث الذكي
+const searchKeywords = [
+  // بحث مباشر
+  'ابحث', 'search', 'بحث', 'ابحث لي', 'دور على',
+  
+  // آخر أخبار/معلومات
+  'آخر', 'أخبار', 'جديد', 'حديث', 'معلومات عن',
+  'latest', 'news', 'recent', 'update',
+  
+  // أسئلة تحتاج بحث
+  'ما هو', 'من هو', 'متى', 'أين', 'كيف',
+  'what is', 'who is', 'when', 'where', 'how',
+  
+  // مقارنات
+  'قارن', 'مقارنة', 'الفرق بين', 'أفضل',
+  'compare', 'difference', 'best',
+  
+  // أسعار/تواريخ
+  'سعر', 'كم', 'تاريخ', 'موعد',
+  'price', 'cost', 'date', 'when',
+  
+  // أحداث حالية
+  'الآن', 'اليوم', 'حالياً', 'الوضع',
+  'now', 'today', 'current', 'status'
+];
+
+// فحص إذا كان السؤال يحتاج بحث
+const needsSearch = (query: string): boolean => {
+  const lowerQuery = query.toLowerCase();
+  return searchKeywords.some(keyword => lowerQuery.includes(keyword.toLowerCase()));
+};
+
+
+
+// وظيفة البحث المبسطة
+const searchWeb = async (query: string) => {
+  const response = await fetch('https://api.tavily.com/search', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      api_key: process.env.NEXT_PUBLIC_TAVILY_API_KEY || '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',
+      query: query,
+      max_results: 3
+    })
+  });
+
+  const data = await response.json();
+  return data;
+};
 
 interface Message {
   id: string;
@@ -10,6 +61,11 @@ interface Message {
   content: string;
   timestamp: Date;
   provider?: string; // Claude/OpenAI/local
+  sources?: Array<{
+    title: string;
+    url: string;
+    snippet: string;
+  }>;
 }
 
 interface Conversation {
@@ -37,39 +93,115 @@ const TypingIndicator = () => (
   </div>
 );
 
-const MessageBubble = ({ message }: { message: Message }) => {
-  const isUser = message.role === "user";
-  let providerLabel = "";
-  if (!isUser && message.provider) {
-    if (message.provider === "claude") providerLabel = "aliai";
-    else if (message.provider === "openai") providerLabel = "Muayadai";
-    else if (message.provider === "local") providerLabel = "Aqlia Local";
-    else providerLabel = `Aqlia ${message.provider}`;
-  }
+// Message Bubble Component
+const MessageBubble = ({ message, onDeepSearch }: { message: Message; onDeepSearch?: (content: string) => void }) => {
+  const isUser = message.role === 'user';
+  
   return (
-    <div className={`flex gap-3 mb-4 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
-      <div
-        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
-          isUser ? "bg-gradient-to-br from-purple-500 to-pink-500" : "bg-gradient-to-br from-blue-500 to-cyan-500"
-        }`}
-      >
-        {isUser ? <User className="w-5 h-5 text-white" /> : <Sparkles className="w-5 h-5 text-white" />}
+    <div
+      className={`flex gap-3 mb-4 animate-fadeIn ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      style={{
+        animation: 'fadeIn 0.3s ease-out'
+      }}
+    >
+      {/* Avatar */}
+      <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
+        isUser 
+          ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+          : 'bg-gradient-to-br from-blue-500 to-cyan-500'
+      }`}>
+        {isUser ? (
+          <span className="text-white font-bold text-sm">أنت</span>
+        ) : (
+          <Sparkles className="w-5 h-5 text-white" />
+        )}
       </div>
-      <div className={`flex flex-col max-w-[70%] ${isUser ? "items-end" : "items-start"}`}>
-        <div
-          className={`px-4 py-3 rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 ${
-            isUser
-              ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-br-sm"
-              : "bg-white dark:bg-gray-800 text-gray-800 dark:text-white rounded-bl-sm border border-gray-100 dark:border-gray-700"
-          }`}
-        >
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-          {!isUser && providerLabel && (
-            <span className="block mt-2 text-xs text-blue-500 dark:text-blue-300 font-semibold">{providerLabel}</span>
-          )}
-        </div>
-        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2" suppressHydrationWarning>
-          {message.timestamp.toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })}
+
+      {/* Message Content */}
+      <div className={`flex flex-col max-w-[85%] ${isUser ? 'items-end' : 'items-start'}`}>
+        {/* رسالة المستخدم */}
+        {isUser ? (
+          <div className="rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-br-sm px-4 py-3">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+          </div>
+        ) : (
+          <div className="w-full">
+            {/* رد الذكاء الاصطناعي بدون مربع */}
+            <div className="mb-4">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800 dark:text-white">{message.content}</p>
+            </div>
+            
+            {/* المصادر تحت الرد */}
+            {message.sources && message.sources.length > 0 && (
+              <>
+                <div className="px-4 pb-3 pt-3">
+                  <div className="flex gap-3 overflow-x-auto pb-2">
+                    {message.sources.map((source: any, idx: number) => {
+                      let domain = '';
+                      try {
+                        domain = new URL(source.url).hostname.replace('www.', '');
+                      } catch (e) {
+                        domain = 'مصدر';
+                      }
+                      
+                      return (
+                        <div key={idx} className="flex-shrink-0 w-40">
+                          <a
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group block"
+                          >
+                            {/* صورة - شفافة */}
+                            <div className="rounded-xl overflow-hidden border-2 border-gray-400 dark:border-gray-500 hover:border-purple-500 hover:shadow-lg transition-all duration-200 mb-2 bg-transparent backdrop-blur-sm">
+                              <div className="aspect-video flex items-center justify-center relative">
+                                <img 
+                                  src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
+                                  alt=""
+                                  className="w-8 h-8"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-purple-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md">
+                                  {idx + 1}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* نصوص */}
+                            <span className="text-xs text-gray-900 dark:text-white font-bold block mb-1 truncate drop-shadow-sm">
+                              {domain}
+                            </span>
+                            <p className="text-sm text-gray-800 dark:text-gray-100 line-clamp-2 leading-tight font-medium">
+                              {source.title}
+                            </p>
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* سؤال بسيط */}
+                  <div className="flex items-center gap-2 pt-2">
+                    <span className="text-xs text-gray-800 dark:text-gray-200 font-medium">
+                      🔍 هل تريد بحث متقدم؟
+                    </span>
+                    <button
+                      onClick={() => onDeepSearch && onDeepSearch(message.content)}
+                      className="px-4 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium rounded-lg shadow-md hover:shadow-lg transition-all"
+                    >
+                      نعم
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        
+        <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-2">
+          {message.timestamp.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
     </div>
@@ -176,6 +308,40 @@ export default function ChatPage() {
     { id: "3", title: "مساعدة في المشروع", timestamp: new Date(2024, 9, 4) },
   ];
 
+  // وظيفة البحث الأوسع
+  const deeperSearch = async (content: string) => {
+    try {
+      console.log('🔍 بحث أوسع للموضوع:', content);
+      
+      // استخراج الكلمات المفتاحية من المحتوى
+      const keywords = content.split(' ').slice(0, 5).join(' ');
+      const searchQuery = `${keywords} معلومات تفصيلية`;
+      
+      const searchResults = await searchWeb(searchQuery);
+      
+      if (searchResults.results && searchResults.results.length > 0) {
+        const newSources = searchResults.results.map((result: any) => ({
+          title: result.title,
+          url: result.url,
+          snippet: result.content
+        }));
+        
+        // إضافة رسالة جديدة بالمصادر الإضافية
+        const deeperMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant' as const,
+          content: `إليك مصادر إضافية حول الموضوع:`,
+          timestamp: new Date(),
+          sources: newSources
+        };
+        
+        setMessages(prev => [...prev, deeperMessage]);
+      }
+    } catch (error) {
+      console.error('❌ فشل البحث الأوسع:', error);
+    }
+  };
+
   // Helper to build a personalized welcome each entry, based on time of day
   const buildWelcome = (name: string) => {
   const now = new Date();
@@ -215,55 +381,131 @@ export default function ChatPage() {
 
   const getLocalAIResponse = (txt: string) => `رد محلي: استلمت "${txt}"`;
 
+  // دوال البحث الذكي
+  const shouldSearch = (message: string): boolean => {
+    const searchKeywords = [
+      'ما هو', 'ما هي', 'كيف', 'متى', 'أين', 'لماذا', 'من',
+      'اشرح', 'وضح', 'عرف', 'اذكر', 'قل لي',
+      'أحدث', 'جديد', 'آخر', 'حديث', 'أخبار',
+      'what', 'how', 'when', 'where', 'why', 'who',
+      'explain', 'tell me', 'latest', 'recent', 'news'
+    ];
+    
+    const messageLower = message.toLowerCase();
+    return searchKeywords.some(keyword => messageLower.includes(keyword));
+  };
+
+  const formatSearchContext = (results: any[]): string => {
+    if (!results || results.length === 0) return '';
+    
+    let context = '\n\n--- معلومات من البحث ---\n';
+    results.slice(0, 3).forEach((result, index) => {
+      context += `المصدر ${index + 1}: ${result.title}\n${result.content.substring(0, 200)}...\n\n`;
+    });
+    
+    return context;
+  };
+
   const handleSend = async () => {
     if (!inputValue.trim()) return;
-    // أي إرسال جديد يلغي حالة سؤال الطالب إن كانت مفعلة
-    setPendingMedStudentAsk(false);
-    const attachmentText = selectedFiles.length
-      ? `\n\n(مرفقات: ${selectedFiles.map((f) => f.name).slice(0, 3).join(", ")}${selectedFiles.length > 3 ? "+" + (selectedFiles.length - 3) + " أخرى" : ""})`
-      : "";
-    const contentToSend = inputValue + attachmentText;
-    const userMessage: Message = { id: Date.now().toString(), role: "user", content: contentToSend, timestamp: new Date() };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    setInputValue("");
-    setSelectedFiles([]);
+
+    const userMessage = {
+      id: Date.now().toString(),
+      role: 'user' as const,
+      content: inputValue,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputValue;
+    setInputValue('');
     setIsTyping(true);
+
     try {
-      // استدعاء AWS Lambda API مباشرة
-      const res = await fetch("https://m6a2nksc08.execute-api.eu-west-1.amazonaws.com/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          messages: newMessages.map((m) => ({ role: m.role, content: m.content })), 
-          model: selectedProvider === "openai" ? "gpt-4o-mini" : "claude-3-sonnet-20240229"
-        }),
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'فشل الاتصال بالخادم');
+      // 🔍 Web Search Integration
+      console.log('🔍 البحث في الويب...');
+      let searchContext = '';
+      let sources: Array<{title: string, url: string, snippet: string}> = [];
+
+      // فحص إذا كان السؤال يحتاج بحث
+      const shouldSearch = needsSearch(currentInput);
+      console.log('🤔 هل يحتاج السؤال لبحث؟', shouldSearch);
+
+      if (shouldSearch) {
+        try {
+          console.log('🔍 بدء البحث باستخدام Tavily...');
+          const searchResults = await searchWeb(currentInput);
+          console.log('📊 نتائج البحث الخام:', searchResults);
+          
+          searchContext = searchResults.results?.map((result: any, index: number) => 
+            `المصدر ${index + 1}: ${result.title}\n${result.content.substring(0, 300)}...`
+          ).join('\n\n') || '';
+          sources = searchResults.results?.map((result: any) => ({
+            title: result.title,
+            url: result.url,
+            snippet: result.content
+          })) || [];
+          console.log('✅ تم العثور على', sources.length, 'مصادر');
+          console.log('📝 محتوى البحث:', searchContext.substring(0, 200) + '...');
+        } catch (searchError) {
+          console.error('❌ فشل البحث:', searchError);
+          console.warn('⚠️ الاستمرار بدون نتائج بحث');
+        }
+      } else {
+        console.log('💬 سؤال عادي - لا يحتاج بحث');
       }
 
-      const data = await res.json();
+      // إرسال للـ API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            ...(searchContext ? [{
+              role: 'system',
+              content: `استخدم المعلومات التالية من البحث للإجابة بدقة:\n\n${searchContext}`
+            }] : []),
+            ...messages.map(m => ({ 
+              role: m.role, 
+              content: m.content 
+            })),
+            { role: 'user', content: currentInput }
+          ],
+          model: 'gpt-4o-mini',
+          provider: 'openai'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('فشل الاتصال بالخادم');
+      }
+
+      const data = await response.json();
       
-      // Lambda يرجع { message, provider } مباشرة
-      const aiMsg: Message = { 
-        id: (Date.now() + 1).toString(), 
-        role: "assistant", 
-        content: data.message, 
-        timestamp: new Date(), 
-        provider: data.provider || (selectedProvider === "openai" ? "openai" : "claude")
+      const aiMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant' as const,
+        content: data.message?.content || data.message || 'لم أتمكن من الحصول على رد',
+        timestamp: new Date(),
+        sources: sources // إضافة المصادر
       };
-      setMessages([...newMessages, aiMsg]);
-      setLastUsedProvider(data.provider || "unknown");
       
-    } catch (e) {
-      console.error("API Error:", e);
-      const aiMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: getLocalAIResponse(userMessage.content), timestamp: new Date(), provider: "local" };
-      setMessages([...newMessages, aiMsg]);
-      setLastUsedProvider("local");
-    } finally {
+      setMessages(prev => [...prev, aiMessage]);
+      setIsTyping(false);
+
+    } catch (error) {
+      console.error('❌ خطأ:', error);
+      
+      const errorMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant' as const,
+        content: 'عذراً، حدث خطأ في الاتصال. الرجاء المحاولة مرة أخرى.',
+        timestamp: new Date()
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
       setIsTyping(false);
     }
   };
@@ -323,7 +565,7 @@ export default function ChatPage() {
 
   return (
     <div className={`${isDark ? "dark" : ""}`}>
-      <div className="flex h-screen bg-gradient-to-br from-gray-50 via-purple-50/30 to-blue-50/30 dark:from-gray-900 dark:via-purple-900/10 dark:to-blue-900/10">
+      <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
   <Sidebar conversations={conversations} onNewChat={handleNewChat} isOpen={isSidebarOpen} onLogout={handleLogout} userName={userName} isGuest={isGuest} />
         {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" onClick={() => setIsSidebarOpen(false)} />}
 
@@ -434,7 +676,7 @@ export default function ChatPage() {
               <div className="flex-1 overflow-y-auto bg-gradient-to-br from-white via-blue-50/60 to-purple-50/60 dark:from-gray-900 dark:via-purple-900/10 dark:to-blue-900/10">
                 <div className="max-w-4xl mx-auto px-6 py-6">
                   {messages.map((message) => (
-                    <MessageBubble key={message.id} message={message} />
+                    <MessageBubble key={message.id} message={message} onDeepSearch={deeperSearch} />
                   ))}
                   {isTyping && (
                     <div className="flex gap-3 mb-4">
