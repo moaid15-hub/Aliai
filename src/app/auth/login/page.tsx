@@ -43,12 +43,15 @@ export default function LoginPage() {
       // محاكاة تأخير الشبكة
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // قائمة بيانات تجريبية مقبولة
+      // قائمة بيانات تجريبية مقبولة - قاعدة البيانات المحلية
       const validCredentials = [
         { email: 'admin@oqool.ai', password: '12345678', name: 'المدير العام' },
         { email: 'test@test.com', password: '12345678', name: 'مستخدم تجريبي' },
         { email: 'demo@demo.com', password: '123456', name: 'حساب تجريبي' },
-        { email: 'user@example.com', password: 'password', name: 'مستخدم مثال' }
+        { email: 'user@example.com', password: 'password', name: 'مستخدم مثال' },
+        { email: 'guest@oqool.ai', password: '123456', name: 'ضيف' },
+        { email: 'developer@oqool.ai', password: 'dev123', name: 'مطور' },
+        { email: 'tester@oqool.ai', password: 'test123', name: 'مختبر' }
       ];
 
       // البحث عن بيانات مطابقة
@@ -76,8 +79,8 @@ export default function LoginPage() {
         return;
       }
 
-      // بيانات خاطئة
-      throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة\n\nجرب إحدى هذه البيانات:\n• admin@oqool.ai / 12345678\n• test@test.com / 12345678\n• demo@demo.com / 123456');
+      // بيانات خاطئة - عرض الحسابات المتاحة
+      throw new Error('البريد الإلكتروني أو كلمة المرور غير صحيحة\n\n🔑 الحسابات التجريبية المتاحة:\n• admin@oqool.ai / 12345678\n• test@test.com / 12345678\n• demo@demo.com / 123456\n• guest@oqool.ai / 123456\n• developer@oqool.ai / dev123');
 
       /* 
       // هذا هو الكود الحقيقي للـ API - معطل حالياً
@@ -131,6 +134,17 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl p-8">
+          {/* رسالة ترحيبية للنظام التجريبي */}
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <Sparkles className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+              <div className="text-right flex-1">
+                <p className="text-green-800 font-medium mb-1">🎉 مرحباً بك في نظام عقول التجريبي!</p>
+                <p className="text-green-700 text-sm">يمكنك تسجيل الدخول باستخدام أي من الحسابات التجريبية المتاحة</p>
+              </div>
+            </div>
+          </div>
+
           {redirectMessage && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />

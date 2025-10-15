@@ -1,7 +1,7 @@
 {
-  "name": "Aqlia Chat",
-  "short_name": "Aqlia",
-  "description": "دردشة عقول AI - تجربة ذكية وسريعة",
+  "name": "oqool Chat",
+  "short_name": "oqool",
+  "description": "دردشة oqool - تجربة ذكية وسريعة",
   "start_url": "/chat",
   "display": "standalone",
   "background_color": "#f5f3ff",

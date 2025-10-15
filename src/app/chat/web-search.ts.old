@@ -1,0 +1,1063 @@
+// ============================================
+// 🔍 نظام البحث الموحد النهائي
+// يجمع كل المميزات من search.ts و web-search.ts
+// ============================================
+
+// 📝 Types & Interfaces
+interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  content: string;
+  relevanceScore?: number;
+  displayLink?: string;
+  formattedUrl?: string;
+  image?: {
+    contextLink?: string;
+    height?: number;
+    width?: number;
+    thumbnailLink?: string;
+  };
+}
+
+interface SearchResponse {
+  results: SearchResult[];
+  query: string;
+  totalResults: string | number;
+  searchTime: number;
+  source: string;
+}
+
+interface MultiSourceResult {
+  source: 'google' | 'youtube' | 'wikipedia' | 'stackoverflow';
+  results: SearchResult[];
+  totalResults: string | number;
+  searchTime: number;
+}
+
+interface MultiSourceResponse {
+  sources: MultiSourceResult[];
+  query: string;
+  totalSearchTime: number;
+}
+
+interface GoogleSearchConfig {
+  apiKey: string;
+  searchEngineId: string;
+  language?: string;
+  country?: string;
+  safeSearch?: 'off' | 'medium' | 'high';
+  numResults?: number;
+}
+
+interface SearchOptions {
+  maxResults?: number;
+  timeout?: number;
+  recentOnly?: boolean;
+  exactMatch?: boolean;
+  fastMode?: boolean; // جديد: للبحث السريع
+  retries?: number;
+  multiSource?: boolean; // جديد: للبحث من مصادر متعددة
+}
+
+// ⚙️ Default Configuration
+const DEFAULT_CONFIG = {
+  language: 'ar',
+  country: 'sa',
+  safeSearch: 'medium' as const,
+  numResults: 5,
+  timeout: 10000,
+  fastTimeout: 3000, // للبحث السريع
+  maxRetries: 3,
+  fastRetries: 1 // للبحث السريع
+};
+
+// ============================================
+// 💾 Cache System
+// ============================================
+
+interface CacheEntry {
+  data: SearchResponse;
+  timestamp: number;
+}
+
+class SearchCache {
+  private cache: Map<string, CacheEntry>;
+  private maxAge: number;
+  private maxSize: number;
+
+  constructor(maxAge: number = 30 * 60 * 1000, maxSize: number = 200) {
+    this.cache = new Map();
+    this.maxAge = maxAge;
+    this.maxSize = maxSize;
+  }
+
+  private generateKey(query: string, options: any): string {
+    return `${query}_${options.language}_${options.numResults}`;
+  }
+
+  set(query: string, options: any, data: SearchResponse): void {
+    const key = this.generateKey(query, options);
+    
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  get(query: string, options: any): SearchResponse | null {
+    const key = this.generateKey(query, options);
+    const entry = this.cache.get(key);
+
+    if (!entry) return null;
+
+    if (Date.now() - entry.timestamp > this.maxAge) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  getStats() {
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      maxAge: this.maxAge
+    };
+  }
+}
+
+const searchCache = new SearchCache();
+
+// ============================================
+// 📊 Usage Tracker
+// ============================================
+
+class UsageTracker {
+  private dailyUsage: Map<string, number>;
+  private maxDailyQueries: number;
+
+  constructor(maxDailyQueries: number = 100) {
+    this.dailyUsage = new Map();
+    this.maxDailyQueries = maxDailyQueries;
+  }
+
+  private getTodayKey(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  canSearch(): boolean {
+    const today = this.getTodayKey();
+    const usage = this.dailyUsage.get(today) || 0;
+    return usage < this.maxDailyQueries;
+  }
+
+  incrementUsage(): void {
+    const today = this.getTodayKey();
+    const current = this.dailyUsage.get(today) || 0;
+    this.dailyUsage.set(today, current + 1);
+  }
+
+  getUsage() {
+    const today = this.getTodayKey();
+    const used = this.dailyUsage.get(today) || 0;
+    return {
+      used,
+      remaining: this.maxDailyQueries - used,
+      limit: this.maxDailyQueries
+    };
+  }
+
+  resetDaily(): void {
+    const today = this.getTodayKey();
+    this.dailyUsage.clear();
+    this.dailyUsage.set(today, 0);
+  }
+}
+
+const usageTracker = new UsageTracker(100);
+
+// ============================================
+// 🎯 Keywords & Detection
+// ============================================
+
+const SEARCH_KEYWORDS = [
+  // البحث المباشر
+  'ابحث عن', 'دور على', 'ابحث لي عن', 'find me', 'search for',
+  'معلومات عن', 'أريد معرفة', 'أخبرني عن', 'وضح لي',
+  
+  // الأخبار والأحداث
+  'آخر أخبار', 'أحدث', 'جديد في', 'ما الجديد', 'latest news',
+  'أخبار اليوم', 'حديث عن', 'معلومات حديثة عن', 'الأخبار',
+  'ما يحدث', 'الوضع الحالي', 'حالياً', 'الآن', 'اليوم',
+  'current situation', 'right now', 'today', 'what\'s happening',
+  
+  // المقارنات
+  'قارن بين', 'مقارنة', 'الفرق بين', 'أيهما أفضل',
+  'ما أفضل', 'أفضل طريقة', 'compare between', 'which is better',
+  
+  // الأسعار
+  'سعر', 'كم سعر', 'كم يكلف', 'تكلفة', 'price of', 'cost of',
+  'كم ثمن', 'بكام', 'كم يبلغ سعر',
+  
+  // التواريخ
+  'متى', 'تاريخ', 'موعد', 'when will', 'when is', 'when did',
+  'في أي وقت', 'كم الساعة', 'ما التاريخ',
+  
+  // الإحصائيات
+  'إحصائيات', 'أرقام', 'بيانات', 'statistics', 'data about',
+  'النسبة', 'المعدل', 'الكمية', 'العدد',
+  
+  // موضوعات تحتاج بحث حديث
+  'الطقس', 'درجة الحرارة', 'weather', 'temperature',
+  'الأسهم', 'البورصة', 'stock price', 'market',
+  'كورونا', 'كوفيد', 'covid', 'coronavirus',
+  'الانتخابات', 'السياسة', 'الحكومة', 'politics',
+  'الرياضة', 'كرة القدم', 'المباراة', 'sports', 'football'
+];
+
+const EXCLUDE_PATTERNS = [
+  'مرحبا', 'مرحباً', 'أهلا', 'أهلاً', 'سلام', 'السلام عليكم',
+  'صباح الخير', 'مساء الخير', 'تصبح على خير', 'شكرا', 'شكراً',
+  'hello', 'hi', 'hey', 'thanks', 'thank you', 'bye', 'goodbye',
+  'كيف حالك', 'كيفك', 'شلونك', 'how are you', 'ما اسمك'
+];
+
+/**
+ * 🤔 هل السؤال يحتاج بحث؟
+ */
+export function needsSearch(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  
+  // استبعاد النصوص القصيرة والتحيات
+  if (lowerQuery.length < 8) return false;
+  if (EXCLUDE_PATTERNS.some(p => lowerQuery.includes(p))) return false;
+  
+  // البحث عن كلمات مفتاحية
+  const hasKeywords = SEARCH_KEYWORDS.some(k => 
+    lowerQuery.includes(k.toLowerCase()) || 
+    lowerQuery.startsWith(k.toLowerCase())
+  );
+  
+  // أنماط إضافية
+  const hasSearchPatterns = [
+    /\b(في|من|حول|عن|about|of|in)\s+\w{4,}/g,
+    /\b(كيف|how)\s+(يمكن|أستطيع|can|to)\s+\w+/g,
+    /\b(ما هو|what is|what are)\s+\w{3,}/g,
+    /\b(أين|where)\s+(يقع|توجد|is|are)\s+\w+/g,
+    /\b(لماذا|why)\s+(يحدث|تحدث|does|is)\s+\w+/g,
+    /\d{4}|\b(عام|سنة|year)\b/g,
+    /\b(شركة|company|مؤسسة|منظمة|organization)\s+\w+/g
+  ].some(pattern => pattern.test(lowerQuery));
+  
+  const isLongQuery = lowerQuery.length > 15;
+  const needsWebSearch = hasKeywords || hasSearchPatterns || isLongQuery;
+  
+  console.log('🤔 تحليل البحث:', {
+    query: lowerQuery.substring(0, 50),
+    hasKeywords,
+    hasPatterns: hasSearchPatterns,
+    isLong: isLongQuery,
+    needsSearch: needsWebSearch
+  });
+  
+  return needsWebSearch;
+}
+
+// ============================================
+// 🔍 Google Search
+// ============================================
+
+async function googleSearch(
+  query: string,
+  config: GoogleSearchConfig
+): Promise<SearchResponse> {
+  const startTime = Date.now();
+
+  // تحقق من Cache
+  const cached = searchCache.get(query, config);
+  if (cached) {
+    console.log('✅ نتيجة من Cache');
+    return cached;
+  }
+
+  const params = new URLSearchParams({
+    key: config.apiKey,
+    cx: config.searchEngineId,
+    q: query,
+    num: (config.numResults || 5).toString(),
+    lr: `lang_${config.language || 'ar'}`,
+    gl: config.country || 'sa',
+    safe: config.safeSearch || 'medium'
+  });
+
+  const url = `https://www.googleapis.com/customsearch/v1?${params.toString()}`;
+  console.log('🔍 Google Search API:', query);
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Google API error: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  const searchResponse: SearchResponse = {
+    results: (data.items || []).map((item: any) => ({
+      title: item.title || 'بدون عنوان',
+      url: item.link || '',
+      snippet: item.snippet || '',
+      content: item.snippet || '',
+      displayLink: item.displayLink,
+      formattedUrl: item.formattedUrl,
+      relevanceScore: 0.9,
+      image: item.pagemap?.cse_image?.[0]
+    })),
+    query: query,
+    totalResults: data.searchInformation?.totalResults || '0',
+    searchTime: Date.now() - startTime,
+    source: 'Google Custom Search'
+  };
+
+  searchCache.set(query, config, searchResponse);
+  return searchResponse;
+}
+
+async function googleSearchWithRetry(
+  query: string,
+  config: GoogleSearchConfig,
+  maxRetries: number = 3
+): Promise<SearchResponse> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await googleSearch(query, config);
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`❌ محاولة ${attempt} فشلت:`, error);
+
+      if (attempt < maxRetries) {
+        console.log(`🔄 إعادة المحاولة ${attempt + 1}...`);
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+  }
+
+  throw lastError || new Error('فشل البحث بعد عدة محاولات');
+}
+
+// ============================================
+// 🎥 YouTube Search
+// ============================================
+
+async function searchYouTube(
+  query: string,
+  maxResults: number = 5
+): Promise<SearchResult[]> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) {
+    console.log('⚠️ YouTube API key غير موجود');
+    return [];
+  }
+
+  try {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=${maxResults}&key=${apiKey}`;
+    
+    const response = await fetch(url, { 
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) {
+      console.error('❌ YouTube API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    
+    return data.items?.map((item: any) => ({
+      title: item.snippet.title,
+      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+      snippet: item.snippet.description,
+      content: item.snippet.description,
+      displayLink: 'youtube.com',
+      image: {
+        thumbnailLink: item.snippet.thumbnails.medium?.url
+      }
+    })) || [];
+  } catch (error) {
+    console.error('❌ خطأ في بحث YouTube:', error);
+    return [];
+  }
+}
+
+// ============================================
+// 📚 Wikipedia Search
+// ============================================
+
+async function searchWikipedia(
+  query: string,
+  maxResults: number = 5
+): Promise<SearchResult[]> {
+  try {
+    // البحث في ويكيبيديا العربية أولاً
+    const searchUrl = `https://ar.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=${maxResults}&format=json`;
+    
+    const response = await fetch(searchUrl, { 
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    const [, titles, descriptions, urls] = data;
+
+    if (!titles || titles.length === 0) {
+      // إذا لم نجد نتائج بالعربية، نجرب الإنجليزية
+      const enSearchUrl = `https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=${maxResults}&format=json`;
+      const enResponse = await fetch(enSearchUrl, { 
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (!enResponse.ok) return [];
+      
+      const enData = await enResponse.json();
+      const [, enTitles, enDescriptions, enUrls] = enData;
+      
+      return enTitles.map((title: string, i: number) => ({
+        title,
+        url: enUrls[i],
+        snippet: enDescriptions[i] || '',
+        content: enDescriptions[i] || '',
+        displayLink: 'en.wikipedia.org'
+      }));
+    }
+
+    return titles.map((title: string, i: number) => ({
+      title,
+      url: urls[i],
+      snippet: descriptions[i] || '',
+      content: descriptions[i] || '',
+      displayLink: 'ar.wikipedia.org'
+    }));
+  } catch (error) {
+    console.error('❌ خطأ في بحث Wikipedia:', error);
+    return [];
+  }
+}
+
+// ============================================
+// 💻 Stack Overflow Search
+// ============================================
+
+async function searchStackOverflow(
+  query: string,
+  maxResults: number = 5
+): Promise<SearchResult[]> {
+  try {
+    const url = `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q=${encodeURIComponent(query)}&site=stackoverflow&pagesize=${maxResults}`;
+    
+    const response = await fetch(url, { 
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    
+    return data.items?.map((item: any) => ({
+      title: item.title,
+      url: item.link,
+      snippet: item.body_markdown?.substring(0, 200) || '',
+      content: item.body_markdown || '',
+      displayLink: 'stackoverflow.com',
+      relevanceScore: item.score
+    })) || [];
+  } catch (error) {
+    console.error('❌ خطأ في بحث Stack Overflow:', error);
+    return [];
+  }
+}
+
+// ============================================
+// 🔀 Multi-Source Search
+// ============================================
+
+async function multiSourceSearch(
+  query: string,
+  maxResults: number = 5
+): Promise<MultiSourceResponse> {
+  const startTime = Date.now();
+  const sources: MultiSourceResult[] = [];
+
+  // نشغل كل عمليات البحث بشكل متوازي
+  const [googleResults, youtubeResults, wikipediaResults] = await Promise.all([
+    // Google Search
+    (async () => {
+      const config: GoogleSearchConfig = {
+        apiKey: process.env.GOOGLE_SEARCH_API_KEY || '',
+        searchEngineId: process.env.GOOGLE_SEARCH_ENGINE_ID || '',
+        language: DEFAULT_CONFIG.language,
+        country: DEFAULT_CONFIG.country,
+        safeSearch: DEFAULT_CONFIG.safeSearch,
+        numResults: maxResults
+      };
+
+      try {
+        const googleStart = Date.now();
+        const result = await googleSearchWithRetry(query, config, 2);
+        return {
+          source: 'google' as const,
+          results: result.results,
+          totalResults: result.totalResults,
+          searchTime: Date.now() - googleStart
+        };
+      } catch (error) {
+        console.error('❌ فشل بحث Google:', error);
+        return {
+          source: 'google' as const,
+          results: [],
+          totalResults: 0,
+          searchTime: Date.now() - startTime
+        };
+      }
+    })(),
+
+    // YouTube Search
+    (async () => {
+      const youtubeStart = Date.now();
+      const results = await searchYouTube(query, maxResults);
+      return {
+        source: 'youtube' as const,
+        results,
+        totalResults: results.length,
+        searchTime: Date.now() - youtubeStart
+      };
+    })(),
+
+    // Wikipedia Search
+    (async () => {
+      const wikiStart = Date.now();
+      const results = await searchWikipedia(query, maxResults);
+      return {
+        source: 'wikipedia' as const,
+        results,
+        totalResults: results.length,
+        searchTime: Date.now() - wikiStart
+      };
+    })()
+  ]);
+
+  // نضيف المصادر التي لديها نتائج فقط
+  if (googleResults.results.length > 0) sources.push(googleResults);
+  if (youtubeResults.results.length > 0) sources.push(youtubeResults);
+  if (wikipediaResults.results.length > 0) sources.push(wikipediaResults);
+
+  const totalSearchTime = Date.now() - startTime;
+
+  console.log('✅ البحث متعدد المصادر:', {
+    query,
+    sourcesFound: sources.length,
+    totalTime: totalSearchTime,
+    sources: sources.map(s => ({
+      source: s.source,
+      results: s.results.length,
+      time: s.searchTime
+    }))
+  });
+
+  return {
+    sources,
+    query,
+    totalSearchTime
+  };
+}
+
+// ============================================
+// 🔄 Fallback APIs
+// ============================================
+
+async function searchWithTavily(
+  query: string,
+  maxResults: number,
+  timeout: number
+): Promise<SearchResponse | null> {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) return null;
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query: query,
+        max_results: maxResults,
+        search_depth: 'basic',
+        include_answer: true
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    
+    return {
+      results: data.results?.map((r: any) => ({
+        title: r.title || 'بدون عنوان',
+        url: r.url || '',
+        snippet: r.content || r.snippet || '',
+        content: r.content || r.snippet || '',
+        relevanceScore: r.score || 0.5
+      })) || [],
+      query: query,
+      totalResults: data.results?.length || 0,
+      searchTime: 0,
+      source: 'Tavily Search'
+    };
+  } catch (error) {
+    console.error('خطأ Tavily:', error);
+    return null;
+  }
+}
+
+async function searchWithSerper(
+  query: string,
+  maxResults: number,
+  timeout: number
+): Promise<SearchResponse | null> {
+  const apiKey = process.env.SERPER_API_KEY;
+  if (!apiKey) return null;
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: query, num: maxResults }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    
+    return {
+      results: data.organic?.slice(0, maxResults).map((r: any) => ({
+        title: r.title || 'بدون عنوان',
+        url: r.link || '',
+        snippet: r.snippet || '',
+        content: r.snippet || '',
+        relevanceScore: 0.8
+      })) || [],
+      query: query,
+      totalResults: data.organic?.length || 0,
+      searchTime: 0,
+      source: 'Google Search (Serper)'
+    };
+  } catch (error) {
+    console.error('خطأ Serper:', error);
+    return null;
+  }
+}
+
+function generateFallbackResults(
+  query: string,
+  searchTime: number
+): SearchResponse {
+  const isArabic = /[\u0600-\u06FF]/.test(query);
+  
+  return {
+    results: [{
+      title: isArabic ? `نتائج عن: ${query}` : `Results for: ${query}`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+      snippet: isArabic 
+        ? `للحصول على نتائج محدثة حول "${query}"، يُنصح بزيارة محركات البحث مباشرة.`
+        : `For updated results about "${query}", please visit search engines directly.`,
+      content: isArabic
+        ? `معلومات عامة حول ${query}. للحصول على تفاصيل أكثر دقة، يُفضل البحث في مصادر متخصصة.`
+        : `General information about ${query}. For more accurate details, please search specialized sources.`,
+      relevanceScore: 0.5
+    }],
+    query: query,
+    totalResults: 1,
+    searchTime: searchTime,
+    source: 'Fallback Results'
+  };
+}
+
+// ============================================
+// 🌐 Main Search Function
+// ============================================
+
+/**
+ * البحث الرئيسي - يدعم الوضع السريع والمتقدم والبحث متعدد المصادر
+ */
+export async function searchWeb(
+  query: string,
+  options: SearchOptions = {}
+): Promise<SearchResponse> {
+  const { 
+    maxResults = 5,
+    fastMode = false,
+    multiSource = false, // جديد!
+    recentOnly = false,
+    exactMatch = false
+  } = options;
+  
+  // إذا كان البحث متعدد المصادر
+  if (multiSource) {
+    const multiResult = await multiSourceSearch(query, maxResults);
+    
+    // نجمع كل النتائج من كل المصادر
+    const allResults: SearchResult[] = [];
+    let totalResults = 0;
+    
+    multiResult.sources.forEach(source => {
+      allResults.push(...source.results);
+      totalResults += typeof source.totalResults === 'number' 
+        ? source.totalResults 
+        : parseInt(String(source.totalResults)) || 0;
+    });
+    
+    return {
+      results: allResults,
+      query,
+      totalResults,
+      searchTime: multiResult.totalSearchTime,
+      source: `Multi-Source (${multiResult.sources.map(s => s.source).join(', ')})`
+    };
+  }
+  
+  const timeout = fastMode ? DEFAULT_CONFIG.fastTimeout : (options.timeout || DEFAULT_CONFIG.timeout);
+  const retries = fastMode ? DEFAULT_CONFIG.fastRetries : (options.retries || DEFAULT_CONFIG.maxRetries);
+  
+  const startTime = Date.now();
+  
+  console.log(fastMode ? '⚡ بحث سريع:' : '🔍 بحث متقدم:', query);
+
+  // تحقق من الحد اليومي
+  const canUseGoogle = usageTracker.canSearch();
+  
+  // 1️⃣ Google Custom Search
+  if (canUseGoogle) {
+    const googleApiKey = process.env.GOOGLE_SEARCH_API_KEY;
+    const googleEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (googleApiKey && googleEngineId) {
+      try {
+        console.log('🔍 محاولة Google Search...');
+        usageTracker.incrementUsage();
+        
+        let modifiedQuery = query;
+        if (recentOnly) {
+          const lastYear = new Date();
+          lastYear.setFullYear(lastYear.getFullYear() - 1);
+          modifiedQuery += ` after:${lastYear.getFullYear()}`;
+        }
+        if (exactMatch) {
+          modifiedQuery = `"${query}"`;
+        }
+        
+        const googleConfig: GoogleSearchConfig = {
+          apiKey: googleApiKey,
+          searchEngineId: googleEngineId,
+          language: DEFAULT_CONFIG.language,
+          country: DEFAULT_CONFIG.country,
+          safeSearch: DEFAULT_CONFIG.safeSearch,
+          numResults: maxResults
+        };
+
+        const result = await googleSearchWithRetry(modifiedQuery, googleConfig, retries);
+        console.log('✅ Google Search نجح!');
+        return result;
+
+      } catch (error) {
+        console.warn('⚠️ Google Search فشل:', error);
+      }
+    } else {
+      console.log('⚠️ مفاتيح Google غير موجودة');
+    }
+  } else {
+    const usage = usageTracker.getUsage();
+    console.log(`📊 استنفذت الحد: ${usage.used}/${usage.limit}`);
+  }
+  
+  // 2️⃣ Tavily (إذا مو Fast Mode)
+  if (!fastMode) {
+    try {
+      const tavilyResult = await searchWithTavily(query, maxResults, timeout);
+      if (tavilyResult) {
+        console.log('✅ Tavily نجح!');
+        return { ...tavilyResult, searchTime: Date.now() - startTime };
+      }
+    } catch (error) {
+      console.warn('⚠️ Tavily فشل:', error);
+    }
+    
+    // 3️⃣ Serper
+    try {
+      const serperResult = await searchWithSerper(query, maxResults, timeout);
+      if (serperResult) {
+        console.log('✅ Serper نجح!');
+        return { ...serperResult, searchTime: Date.now() - startTime };
+      }
+    } catch (error) {
+      console.warn('⚠️ Serper فشل:', error);
+    }
+  }
+  
+  // 4️⃣ Fallback
+  console.log('ℹ️ استخدام Fallback');
+  return generateFallbackResults(query, Date.now() - startTime);
+}
+
+// ============================================
+// 🎨 Format Results
+// ============================================
+
+export function formatMultiSourceResults(response: MultiSourceResponse): string {
+  const { sources, query, totalSearchTime } = response;
+  
+  if (!sources || sources.length === 0) {
+    return `عذراً، لم أجد نتائج عن "${query}" 🔍\n\nجرّب تغيير كلمات البحث!`;
+  }
+  
+  let formatted = `🔍 **نتائج البحث متعدد المصادر: "${query}"**\n\n`;
+  formatted += `⏱️ الوقت الكلي: ${(totalSearchTime / 1000).toFixed(2)} ثانية\n`;
+  formatted += `📊 عدد المصادر: ${sources.length}\n\n`;
+  formatted += `---\n\n`;
+
+  // نرتب المصادر: Google أولاً، ثم YouTube، ثم Wikipedia
+  const sortOrder = { google: 0, youtube: 1, wikipedia: 2, stackoverflow: 3 };
+  const sortedSources = [...sources].sort((a, b) => 
+    (sortOrder[a.source] || 99) - (sortOrder[b.source] || 99)
+  );
+
+  sortedSources.forEach((source) => {
+    const sourceIcon = {
+      google: '🔍',
+      youtube: '🎥',
+      wikipedia: '📚',
+      stackoverflow: '💻'
+    }[source.source] || '🌐';
+
+    const sourceName = {
+      google: 'Google',
+      youtube: 'YouTube',
+      wikipedia: 'Wikipedia',
+      stackoverflow: 'Stack Overflow'
+    }[source.source] || source.source;
+
+    formatted += `## ${sourceIcon} ${sourceName}\n\n`;
+    formatted += `⏱️ ${(source.searchTime / 1000).toFixed(2)}s | 📊 ${source.results.length} نتيجة\n\n`;
+
+    source.results.slice(0, 3).forEach((result, index) => {
+      formatted += `**${index + 1}. ${result.title}**\n\n`;
+      if (result.displayLink) formatted += `🌐 ${result.displayLink}\n`;
+      if (result.snippet) formatted += `${result.snippet.substring(0, 150)}...\n\n`;
+      formatted += `🔗 [اضغط للزيارة](${result.url})\n\n`;
+    });
+
+    formatted += `---\n\n`;
+  });
+
+  return formatted;
+}
+
+export function formatSearchResults(response: SearchResponse): string {
+  const { results, query, source, totalResults, searchTime } = response;
+  
+  // إذا كان البحث متعدد المصادر
+  if (source.includes('Multi-Source')) {
+    // نحول النتائج لعرضها بشكل منظم حسب المصدر
+    const googleResults = results.filter(r => r.displayLink?.includes('google') || !r.displayLink);
+    const youtubeResults = results.filter(r => r.displayLink === 'youtube.com');
+    const wikipediaResults = results.filter(r => r.displayLink?.includes('wikipedia'));
+    
+    let formatted = `🔍 **نتائج البحث متعدد المصادر: "${query}"**\n\n`;
+    formatted += `⏱️ الوقت: ${(searchTime / 1000).toFixed(2)} ثانية\n\n`;
+    formatted += `---\n\n`;
+
+    if (googleResults.length > 0) {
+      formatted += `## 🔍 Google\n\n`;
+      googleResults.slice(0, 3).forEach((result, index) => {
+        formatted += `**${index + 1}. ${result.title}**\n\n`;
+        if (result.displayLink) formatted += `🌐 ${result.displayLink}\n`;
+        formatted += `${result.snippet}\n\n`;
+        formatted += `🔗 [اضغط للزيارة](${result.url})\n\n`;
+      });
+      formatted += `---\n\n`;
+    }
+
+    if (youtubeResults.length > 0) {
+      formatted += `## 🎥 YouTube\n\n`;
+      youtubeResults.slice(0, 3).forEach((result, index) => {
+        formatted += `**${index + 1}. ${result.title}**\n\n`;
+        if (result.image?.thumbnailLink) {
+          formatted += `![${result.title}](${result.image.thumbnailLink})\n\n`;
+        }
+        formatted += `${result.snippet.substring(0, 150)}...\n\n`;
+        formatted += `🔗 [شاهد الفيديو](${result.url})\n\n`;
+      });
+      formatted += `---\n\n`;
+    }
+
+    if (wikipediaResults.length > 0) {
+      formatted += `## 📚 Wikipedia\n\n`;
+      wikipediaResults.slice(0, 3).forEach((result, index) => {
+        formatted += `**${index + 1}. ${result.title}**\n\n`;
+        if (result.displayLink) formatted += `🌐 ${result.displayLink}\n`;
+        formatted += `${result.snippet}\n\n`;
+        formatted += `🔗 [اقرأ المقال](${result.url})\n\n`;
+      });
+      formatted += `---\n\n`;
+    }
+
+    return formatted;
+  }
+  
+  if (!results || results.length === 0) {
+    return `عذراً، لم أجد نتائج عن "${query}" 🔍\n\nجرّب تغيير كلمات البحث!`;
+  }
+  
+  let formatted = `🔍 **نتائج البحث عن: "${query}"**\n\n`;
+  
+  if (typeof totalResults === 'string' && totalResults !== '0') {
+    const total = parseInt(totalResults);
+    if (!isNaN(total)) {
+      formatted += `📊 وجدت حوالي **${total.toLocaleString('ar')}** نتيجة`;
+    }
+  } else if (typeof totalResults === 'number' && totalResults > 0) {
+    formatted += `📊 وجدت **${totalResults}** نتيجة`;
+  }
+  
+  formatted += ` في ${(searchTime / 1000).toFixed(2)} ثانية\n`;
+  formatted += `🔎 المصدر: **${source}**\n\n---\n\n`;
+  
+  results.forEach((result, index) => {
+    formatted += `**${index + 1}. ${result.title}**\n\n`;
+    if (result.displayLink) formatted += `🌐 ${result.displayLink}\n`;
+    formatted += `${result.snippet}\n\n`;
+    formatted += `🔗 [اضغط للزيارة](${result.url})\n\n---\n\n`;
+  });
+  
+  if (source.includes('Google')) {
+    const usage = usageTracker.getUsage();
+    formatted += `\n📊 **استخدام API:** ${usage.used}/${usage.limit} (متبقي: ${usage.remaining})\n\n`;
+  }
+  
+  formatted += `💡 تبي تفاصيل أكثر؟ 😊`;
+  
+  return formatted;
+}
+
+// ============================================
+// 🛠️ Utility Functions
+// ============================================
+
+export function getCacheStats() {
+  return searchCache.getStats();
+}
+
+export function clearCache() {
+  searchCache.clear();
+}
+
+export function getUsageStats() {
+  return usageTracker.getUsage();
+}
+
+export function resetUsage() {
+  usageTracker.resetDaily();
+}
+
+/**
+ * ⚡ بحث سريع (3 ثواني، محاولة واحدة) - مصدر واحد فقط
+ */
+export async function fastSearch(query: string, maxResults: number = 3): Promise<SearchResponse> {
+  return searchWeb(query, { 
+    maxResults, 
+    fastMode: true,
+    multiSource: false, // بحث سريع من مصدر واحد
+    timeout: DEFAULT_CONFIG.fastTimeout,
+    retries: DEFAULT_CONFIG.fastRetries
+  });
+}
+
+/**
+ * 🔍 بحث متقدم (10 ثواني، 3 محاولات) - بحث متعدد المصادر تلقائياً
+ */
+export async function advancedSearch(
+  query: string,
+  options?: Omit<SearchOptions, 'fastMode'>
+): Promise<SearchResponse> {
+  return searchWeb(query, { 
+    ...options, 
+    fastMode: false,
+    multiSource: true // بحث متعدد المصادر تلقائياً في الوضع المتقدم
+  });
+}
+
+/**
+ * 🌐 بحث متعدد المصادر مباشر
+ */
+export async function multiSearch(query: string, maxResults: number = 5): Promise<SearchResponse> {
+  return searchWeb(query, { 
+    maxResults,
+    multiSource: true,
+    fastMode: false
+  });
+}
+
+/**
+ * 🛡️ بحث محمي مع التحقق من الحد اليومي
+ */
+export async function protectedSearch(
+  query: string,
+  options?: SearchOptions
+): Promise<string> {
+  if (!usageTracker.canSearch()) {
+    const usage = usageTracker.getUsage();
+    return `عذراً، وصلت للحد الأقصى! 📊\n\nاستخدمت ${usage.used}/${usage.limit}.\nحاول بكرة! 😊`;
+  }
+
+  try {
+    const result = await searchWeb(query, options);
+    return formatSearchResults(result);
+  } catch (error) {
+    console.error('❌ خطأ:', error);
+    return `عذراً، حصل خطأ 😕\n\nممكن تحاول مرة ثانية؟`;
+  }
+}
+
+// 📤 Export للتوافق
+export const simpleSearchWeb = fastSearch;
+
+export {
+  searchCache,
+  usageTracker,
+  DEFAULT_CONFIG
+};
