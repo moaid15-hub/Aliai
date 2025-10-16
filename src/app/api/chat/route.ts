@@ -330,6 +330,20 @@ export async function POST(request: NextRequest) {
         const searchResponse = await smartSearch(userInput, 5);
         const formattedResults = formatSearchResults(searchResponse);
         
+        // حساب metadata بناءً على نوع البحث
+        let sources = 'Google';
+        let totalResults = 0;
+        
+        if (searchResponse.primarySource && searchResponse.additionalSources) {
+          // البحث المتقدم
+          sources = searchResponse.primarySource.source + ', ' + searchResponse.additionalSources.map(s => s.source).join(', ');
+          totalResults = searchResponse.primarySource.results.length + searchResponse.additionalSources.reduce((sum, s) => sum + s.results.length, 0);
+        } else if (searchResponse.google) {
+          // البحث العادي
+          sources = 'Google';
+          totalResults = searchResponse.google.length;
+        }
+        
         return NextResponse.json({
           success: true,
           message: formattedResults,
@@ -338,8 +352,8 @@ export async function POST(request: NextRequest) {
           isSearchResult: true,
           searchMetadata: {
             query: userInput,
-            sources: searchResponse.primarySource.source + ', ' + searchResponse.additionalSources.map(s => s.source).join(', '),
-            totalResults: searchResponse.primarySource.results.length + searchResponse.additionalSources.reduce((sum, s) => sum + s.results.length, 0),
+            sources: sources,
+            totalResults: totalResults,
             searchTime: searchResponse.searchTime
           },
           usage: {
