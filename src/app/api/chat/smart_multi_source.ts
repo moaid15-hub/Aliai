@@ -3,7 +3,7 @@
 // يختار المصدر المناسب حسب نوع السؤال
 // ============================================
 
-import { searchWeb, type SearchResponse } from './google_search_system';
+import { googleSearch, type SearchResponse } from './google_search_system';
 
 // 📝 Types
 interface SourceResult {
@@ -399,7 +399,16 @@ export async function smartMultiSourceSearch(
   let googleResult: SearchResponse | null = null;
   if (includeGoogle) {
     try {
-      googleResult = await searchWeb(query, { maxResults, fastMode: false });
+      const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
+      const googleCx = process.env.GOOGLE_SEARCH_ENGINE_ID;
+      
+      if (googleKey && googleCx) {
+        googleResult = await googleSearch(query, {
+          apiKey: googleKey,
+          searchEngineId: googleCx,
+          numResults: maxResults
+        });
+      }
     } catch (error) {
       console.warn('⚠️ Google Search فشل:', error);
     }
@@ -423,7 +432,7 @@ export async function smartMultiSourceSearch(
       icon: '🔍',
       results: googleResult.results.map(r => ({
         title: r.title,
-        url: r.url,
+        url: r.link,
         snippet: r.snippet
       }))
     };

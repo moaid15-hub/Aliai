@@ -84,6 +84,7 @@ export interface PersonaTemplate {
 export interface PersonaFilters {
   category?: PersonaCategory;
   tone?: PersonaTone;
+  language_style?: PersonaLanguageStyle;
   search?: string;
   is_public?: boolean;
   is_featured?: boolean;

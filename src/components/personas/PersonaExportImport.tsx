@@ -87,7 +87,7 @@ export default function PersonaExportImport({
         }
 
         // Import the personas
-        PersonaStorage.import(data);
+        PersonaStorage.import(content);
         setImportStatus('success');
         setImportMessage(`تم استيراد ${validPersonas.length} شخصية بنجاح`);
         setImportedCount(validPersonas.length);

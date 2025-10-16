@@ -89,8 +89,8 @@ export class PersonaService {
       personas = personas.filter(p => p.is_featured);
     }
 
-    if (filters.min_rating) {
-      personas = personas.filter(p => p.rating >= filters.min_rating);
+    if (filters.min_rating !== undefined && filters.min_rating > 0) {
+      personas = personas.filter(p => p.rating >= filters.min_rating!);
     }
 
     if (filters.search) {

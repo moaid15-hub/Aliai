@@ -49,8 +49,8 @@ export default function PersonaFilters({
   className = ''
 }: PersonaFiltersProps) {
   const hasActiveFilters = filters.search || 
-    (filters.category && filters.category !== 'all') ||
-    (filters.tone && filters.tone !== 'all') ||
+    (filters.category && filters.category !== ('all' as any)) ||
+    (filters.tone && filters.tone !== ('all' as any)) ||
     (filters.min_rating && filters.min_rating > 0) ||
     filters.is_public !== undefined ||
     filters.is_featured !== undefined;
