@@ -435,7 +435,7 @@ async function searchYouTube(query: string, maxResults: number = 5): Promise<Sea
         url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
         snippet: item.snippet.description,
         content: item.snippet.description,
-        thumbnail: item.snippet.thumbnails?.medium?.url,
+        thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url, // نستخدم high للجودة العالية
         author: item.snippet.channelTitle,
         relevanceScore: 0.9
       })) || [];
@@ -867,8 +867,16 @@ function formatMultiSourceResults(response: MultiSourceResponse): string {
         formatted += `#### ${src.icon} **${src.source}**\n\n`;
         
         src.results.slice(0, 3).forEach((r, i) => {
-          formatted += `**${i + 1}. ${r.title}**\n\n`;
-          if (r.displayLink) formatted += `🌐 **${r.displayLink}**\n\n`;
+          // عرض مصغر فيديو اليوتيوب
+          if (r.thumbnail && src.source === 'YouTube') {
+            formatted += `[![${r.title}](${r.thumbnail})](${r.url} "${r.title}")\n\n`;
+            formatted += `**${i + 1}. ${r.title}**\n\n`;
+          } else {
+            formatted += `**${i + 1}. ${r.title}**\n\n`;
+          }
+          
+          if (r.author) formatted += `👤 ${r.author}\n\n`;
+          if (r.displayLink && !r.thumbnail) formatted += `🌐 **${r.displayLink}**\n\n`;
           if (r.snippet) formatted += `${r.snippet}\n\n`;
           formatted += `> [🔗 **افتح الرابط**](${r.url})\n\n`;
         });
