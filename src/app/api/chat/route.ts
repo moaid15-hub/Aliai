@@ -417,76 +417,7 @@ export async function POST(request: NextRequest) {
           });
         }
         
-        // إذا لم يتم اختيار مصدر، نقدم الاقتراحات للمستخدم
-        if (!searchChoice) {
-          console.log('💡 تقديم اقتراحات البحث للمستخدم...');
-          
-          // 🧠 نظام الكشف التلقائي الذكي المتقدم
-          const correctedQuery = userInput
-            .replace(/فيدو/gi, 'فيديو')
-            .replace(/فلم/gi, 'فيلم')
-            .replace(/يوتوب/gi, 'يوتيوب')
-            .replace(/غوغل/gi, 'جوجل');
-          
-          const needsCorrection = correctedQuery !== userInput;
-          
-          // 🎯 الكلمات المفتاحية لكل مصدر
-          const sourcePatterns = {
-            youtube: /فيديو|فيلم|مقطع|يوتيوب|youtube|شاهد|اعرض|شوف|عرض|مسلسل|برنامج|حلقة/i,
-            stackoverflow: /كود|برمجة|خطأ|error|bug|مشكلة برمجية|كيف أبرمج|دالة|function|class|تطوير/i,
-            github: /github|repository|repo|مشروع برمجي|كود مفتوح|open source|library|package/i,
-            wikipedia: /تعريف|من هو|ما هو|ما هي|معنى|شرح|تاريخ|نبذة|موسوعة|ويكيبيديا/i,
-            shopping: /منتج|شراء|سعر|price|buy|اشتري|كم سعر|product|amazon|متجر/i
-          };
-          
-          // 🔍 كشف المصدر المناسب
-          let detectedSource: 'youtube' | 'google' = 'google';
-          let sourceEmoji = '🌐';
-          let sourceName = 'Google';
-          let sourceDescription = 'للمقالات والمعلومات العامة';
-          
-          if (sourcePatterns.youtube.test(userInput)) {
-            detectedSource = 'youtube';
-            sourceEmoji = '🎥';
-            sourceName = 'YouTube';
-            sourceDescription = 'للفيديوهات والمقاطع المرئية';
-          } else if (sourcePatterns.stackoverflow.test(userInput)) {
-            sourceEmoji = '💻';
-            sourceName = 'Google + Stack Overflow';
-            sourceDescription = 'للأسئلة البرمجية والتقنية';
-          } else if (sourcePatterns.github.test(userInput)) {
-            sourceEmoji = '🔧';
-            sourceName = 'GitHub + Google';
-            sourceDescription = 'للمشاريع والأكواد البرمجية';
-          } else if (sourcePatterns.wikipedia.test(userInput)) {
-            sourceEmoji = '📚';
-            sourceName = 'Wikipedia + Google';
-            sourceDescription = 'للتعريفات والمعلومات الموسوعية';
-          } else if (sourcePatterns.shopping.test(userInput)) {
-            sourceEmoji = '🛒';
-            sourceName = 'Google Shopping';
-            sourceDescription = 'للمنتجات والأسعار';
-          }
-          
-          const suggestions = `فهمتك! ${needsCorrection ? `(تقصد: **${correctedQuery}**)` : ''} 
-
-${sourceEmoji} **المصدر المقترح:** ${sourceName}
-${sourceDescription}
-
-أو اضغط للبحث المتقدم الشامل في جميع المصادر 👇`;
-          
-          return NextResponse.json({
-            success: true,
-            message: suggestions,
-            needsUserChoice: true,
-            searchOptions: {
-              primary: detectedSource,
-              advanced: true
-            }
-          });
-        }
-        
-        // البحث التلقائي (fallback) - وضع متقدم افتراضياً
+        // البحث التلقائي المباشر - وضع متقدم افتراضياً
         const searchResponse = await smartSearch(userInput, 5, 'advanced');
         const formattedResults = formatSearchResults(searchResponse);
         
