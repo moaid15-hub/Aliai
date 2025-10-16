@@ -10,6 +10,7 @@ import { sendWithAutoSearch } from './ai-service';
 import { AI_PROVIDERS, STORAGE_KEYS, saveToStorage, loadFromStorage, copyToClipboard, exportConversation } from './config';
 import { CodeEditor } from './ui-components';
 import VoiceSearch from './voice-search';
+import TextToSpeech from './text-to-speech';
 
 const parseMessageContent = (content: string) => {
   // التحقق من أن content ليس undefined أو null
@@ -327,6 +328,11 @@ const MessageBubble = ({
               onEdit={onEdit} 
               onDelete={onDelete} 
             />
+            
+            {/* زر النطق للرسائل من AI */}
+            <div className="mt-3">
+              <TextToSpeech text={message.content} className="opacity-60 hover:opacity-100 transition-opacity" />
+            </div>
           </div>
         )}
         
