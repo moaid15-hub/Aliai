@@ -240,17 +240,17 @@ const MessageBubble = ({
                 part.type === 'code' ? (
                   <CodeEditor key={idx} code={part.content} language={part.language} />
                 ) : (
-                  <div key={idx} className={`text-[17px] leading-7 whitespace-pre-wrap font-medium mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
+                  <div key={idx} className={`text-[16px] leading-relaxed whitespace-pre-wrap font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
                        dangerouslySetInnerHTML={{
                          __html: part.content
-                           .replace(/### (.*)/g, `<h3 class="text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-3 mt-6">$1</h3>`)
-                           .replace(/## (.*)/g, `<h2 class="text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-4 mt-8">$1</h2>`)
-                           .replace(/# (.*)/g, `<h1 class="text-3xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-6 mt-10">$1</h1>`)
+                           .replace(/### (.*)/g, `<h3 class="text-lg font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-2 mt-4">$1</h3>`)
+                           .replace(/## (.*)/g, `<h2 class="text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-3 mt-5">$1</h2>`)
+                           .replace(/# (.*)/g, `<h1 class="text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-4 mt-6">$1</h1>`)
                            .replace(/\*\*(.*?)\*\*/g, `<strong class="font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}">$1</strong>`)
                            .replace(/\*(.*?)\*/g, `<em class="italic ${isDark ? 'text-slate-400' : 'text-slate-600'}">$1</em>`)
                            .replace(/`(.*?)`/g, `<code class="${isDark ? 'bg-gray-800 text-blue-400' : 'bg-gray-100 text-blue-600'} px-2 py-1 rounded font-mono text-sm">$1</code>`)
-                           .replace(/^\d+\.\s(.*)/gm, `<li class="mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}">$1</li>`)
-                           .replace(/^-\s(.*)/gm, `<li class="mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'} list-disc ml-6">$1</li>`)
+                           .replace(/^\d+\.\s(.*)/gm, `<li class="mb-1 ${isDark ? 'text-gray-200' : 'text-gray-700'}">$1</li>`)
+                           .replace(/^-\s(.*)/gm, `<li class="mb-1 ${isDark ? 'text-gray-200' : 'text-gray-700'} list-disc ml-6">$1</li>`)
                        }}
                   />
                 )
