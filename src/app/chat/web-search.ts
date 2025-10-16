@@ -71,6 +71,7 @@ interface SearchOptions {
   fastMode?: boolean;
   retries?: number;
   smartSearch?: boolean; // جديد: للبحث الذكي متعدد المصادر
+  searchMode?: 'normal' | 'advanced'; // وضع البحث: عادي أو متقدم
 }
 
 // ⚙️ Configuration
@@ -699,6 +700,7 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
     maxResults = 5,
     fastMode = false,
     smartSearch = false, // البحث الذكي متعدد المصادر
+    searchMode = 'advanced', // الوضع الافتراضي
     recentOnly = false,
     exactMatch = false
   } = options;
@@ -716,7 +718,7 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
   
   // البحث الذكي متعدد المصادر
   if (smartSearch) {
-    const result = await smartMultiSourceSearch(query, maxResults);
+    const result = await smartMultiSourceSearch(query, maxResults, searchMode);
     searchCache.set(query, options, result);
     return result;
   }
@@ -920,8 +922,8 @@ export async function advancedSearch(query: string, options?: Omit<SearchOptions
   return searchWeb(query, { ...options, fastMode: false });
 }
 
-export async function smartSearch(query: string, maxResults: number = 5): Promise<MultiSourceResponse> {
-  const result = await searchWeb(query, { maxResults, smartSearch: true });
+export async function smartSearch(query: string, maxResults: number = 5, searchMode: 'normal' | 'advanced' = 'advanced'): Promise<MultiSourceResponse> {
+  const result = await searchWeb(query, { maxResults, smartSearch: true, searchMode });
   return result as MultiSourceResponse;
 }
 

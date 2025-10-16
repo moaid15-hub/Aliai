@@ -329,8 +329,8 @@ export async function POST(request: NextRequest) {
       try {
         // ✨ جديد: معالجة اختيار المصدر من المستخدم
         if (searchChoice === 'google') {
-          console.log('🌐 بحث سريع في Google فقط...');
-          const searchResponse = await smartSearch(userInput, 3);
+          console.log('🌐 بحث سريع في Google فقط (normal mode)...');
+          const searchResponse = await smartSearch(userInput, 3, 'normal');
           const formattedResults = formatSearchResults(searchResponse);
           
           return NextResponse.json({
@@ -349,8 +349,8 @@ export async function POST(request: NextRequest) {
         }
         
         if (searchChoice === 'youtube') {
-          console.log('🎥 بحث سريع في YouTube فقط...');
-          const searchResponse = await smartSearch(userInput, 5);
+          console.log('🎥 بحث سريع في YouTube فقط (advanced mode)...');
+          const searchResponse = await smartSearch(userInput, 5, 'advanced');
           
           // فلترة نتائج YouTube فقط
           let formatted = `🎥 **نتائج YouTube: "${userInput}"**\n\n`;
@@ -387,8 +387,8 @@ export async function POST(request: NextRequest) {
         
         // ✨ جديد: البحث المتقدم الشامل
         if (searchChoice === 'advanced') {
-          console.log('🔍 بحث متقدم شامل في كل المصادر...');
-          const searchResponse = await smartSearch(userInput, 5);
+          console.log('🔍 بحث متقدم شامل في كل المصادر (advanced mode)...');
+          const searchResponse = await smartSearch(userInput, 5, 'advanced');
           const formattedResults = formatSearchResults(searchResponse);
           
           let sources = 'Google';
@@ -486,8 +486,8 @@ ${sourceDescription}
           });
         }
         
-        // البحث التلقائي (fallback)
-        const searchResponse = await smartSearch(userInput, 5);
+        // البحث التلقائي (fallback) - وضع متقدم افتراضياً
+        const searchResponse = await smartSearch(userInput, 5, 'advanced');
         const formattedResults = formatSearchResults(searchResponse);
         
         // حساب metadata بناءً على نوع البحث
