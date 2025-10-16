@@ -203,9 +203,9 @@ const MessageBubble = ({
   
   return (
     <div
-      className={`flex gap-4 mb-6 animate-fadeIn group ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      className={`flex gap-2 sm:gap-4 mb-4 sm:mb-6 animate-fadeIn group ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
     >
-      <div className={`flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105 ${
+      <div className={`flex-shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105 ${
         isUser 
           ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600' 
           : 'bg-gradient-to-br from-blue-600 via-cyan-600 to-teal-600'
@@ -241,11 +241,11 @@ const MessageBubble = ({
         )}
       </div>
 
-      <div className={`flex flex-col max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+      <div className={`flex flex-col max-w-[85%] sm:max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         {isUser ? (
           <div className="relative">
-            <div className="rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600 text-white rounded-br-md px-6 py-4 transform hover:-translate-y-0.5">
-              <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <div className="rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600 text-white rounded-br-md px-3 py-3 sm:px-6 sm:py-4 transform hover:-translate-y-0.5">
+              <p className="text-[14px] sm:text-[15px] leading-relaxed whitespace-pre-wrap break-words">{message.content}</p>
             </div>
             <MessageActions 
               message={message} 
@@ -261,11 +261,11 @@ const MessageBubble = ({
                 part.type === 'code' ? (
                   <CodeEditor key={idx} code={part.content} language={part.language} />
                 ) : (
-                  <div key={idx} className={`text-[16px] leading-relaxed whitespace-pre-wrap font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
+                  <div key={idx} className={`text-[14px] sm:text-[16px] leading-relaxed whitespace-pre-wrap break-words font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
                        dangerouslySetInnerHTML={{
                          __html: part.content
                            // صور يوتيوب (يجب أن تكون قبل الروابط العادية)
-                           .replace(/\[!\[(.*?)\]\((.*?)\)\]\((.*?)(?:\s+"(.*?)")?\)/g, `<a href="$3" target="_blank" rel="noopener noreferrer" class="block my-3 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]"><img src="$2" alt="$1" title="$4" class="w-full max-w-md rounded-xl" /></a>`)
+                           .replace(/\[!\[(.*?)\]\((.*?)\)\]\((.*?)(?:\s+"(.*?)")?\)/g, `<a href="$3" target="_blank" rel="noopener noreferrer" class="block my-2 sm:my-3 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]"><img src="$2" alt="$1" title="$4" class="w-full rounded-xl" /></a>`)
                            .replace(/### (.*)/g, `<h3 class="text-lg font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-2 mt-4">$1</h3>`)
                            .replace(/## (.*)/g, `<h2 class="text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-3 mt-5">$1</h2>`)
                            .replace(/# (.*)/g, `<h1 class="text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-4 mt-6">$1</h1>`)
@@ -282,17 +282,17 @@ const MessageBubble = ({
             
             {/* ✨ جديد: أزرار اختيار البحث */}
             {message.needsUserChoice && message.searchOptions && onSearch && (
-              <div className="flex flex-wrap gap-3 mt-4 justify-center">
+              <div className="flex flex-wrap gap-2 sm:gap-3 mt-3 sm:mt-4 justify-center">
                 <button
                   onClick={() => onSearch(message.searchOptions!.primary === 'youtube' ? 'youtube' : 'google')}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold text-sm flex items-center gap-2"
+                  className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold text-xs sm:text-sm flex items-center gap-2"
                 >
                   {message.searchOptions!.primary === 'youtube' ? '🎥 YouTube' : '🌐 Google'}
                 </button>
                 
                 <button
                   onClick={() => onSearch('advanced')}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold text-sm flex items-center gap-2"
+                  className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold text-xs sm:text-sm flex items-center gap-2"
                 >
                   🔍 بحث متقدم شامل
                 </button>
@@ -514,7 +514,7 @@ const Sidebar = ({
   <div
     className={`fixed right-0 top-0 h-full backdrop-blur-xl shadow-2xl transition-transform duration-300 z-50 ${
       isOpen ? "translate-x-0" : "translate-x-full"
-    } w-80`}
+    } w-[85vw] sm:w-80`}
     style={{
       background: isDark ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
       borderLeft: isDark ? '1px solid rgba(75, 85, 99, 0.3)' : '1px solid rgba(229, 231, 235, 0.3)'
@@ -1351,7 +1351,7 @@ export default function ChatPage() {
                 <div className="flex items-center gap-2 sm:gap-4">
                   <button 
                     onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-                    className="p-2 sm:p-2.5 rounded-xl transition-all duration-200 transform hover:scale-105"
+                    className="p-2 rounded-xl transition-all duration-200 transform hover:scale-105"
                     style={{
                       background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(0, 217, 255, 0.1))',
                       border: '1px solid rgba(59, 130, 246, 0.3)',
@@ -1370,7 +1370,7 @@ export default function ChatPage() {
                   </button>
                   <button
                     onClick={() => setIsDark(!isDark)}
-                    className="p-2 rounded-xl transition-all duration-200 transform hover:scale-105"
+                    className="hidden sm:block p-2 rounded-xl transition-all duration-200 transform hover:scale-105"
                     style={{
                       background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(0, 217, 255, 0.1))',
                       border: '1px solid rgba(59, 130, 246, 0.3)',
@@ -1389,7 +1389,7 @@ export default function ChatPage() {
                   </button>
                   <button
                     onClick={() => setIsSettingsOpen(true)}
-                    className="p-2 rounded-xl transition-all duration-200 transform hover:scale-105"
+                    className="hidden sm:block p-2 rounded-xl transition-all duration-200 transform hover:scale-105"
                     style={{
                       background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(0, 217, 255, 0.1))',
                       border: '1px solid rgba(59, 130, 246, 0.3)',
@@ -1457,9 +1457,9 @@ export default function ChatPage() {
                 </div>
                 
                 {/* المنتصف - الشعار */}
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-2">
                   <div 
-                    className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full animate-pulse"
+                    className="w-2 h-2 rounded-full animate-pulse"
                     style={{
                       background: 'linear-gradient(45deg, #3B82F6, #00d9ff)',
                       boxShadow: '0 0 10px rgba(59, 130, 246, 0.8), 0 0 20px rgba(0, 217, 255, 0.6)',
@@ -1467,7 +1467,7 @@ export default function ChatPage() {
                     }}
                   />
                   <div className="relative">
-                    <svg width="200" height="80" viewBox="0 0 450 150" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 sm:h-12 w-auto">
+                    <svg width="200" height="80" viewBox="0 0 450 150" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-8 sm:h-10 md:h-12 w-auto">
                       {/* Brain Icon Center */}
                       <circle cx="60" cy="75" r="8" fill="url(#centerGradient)"/>
                       
@@ -1551,18 +1551,18 @@ export default function ChatPage() {
           </div>
 
           {isWelcomeOnly ? (
-            <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 relative">
-              <div className="w-full max-w-3xl">
-                <div className="text-center mb-10 sm:mb-12 space-y-4">
+            <div className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6 relative overflow-y-auto">
+              <div className="w-full max-w-3xl py-6 sm:py-0">
+                <div className="text-center mb-8 sm:mb-10 md:mb-12 space-y-3 sm:space-y-4">
                   <div 
-                    className="inline-block p-4 rounded-3xl shadow-2xl mb-6 transform hover:scale-105 transition-all duration-300"
+                    className="inline-block p-3 sm:p-4 rounded-3xl shadow-2xl mb-4 sm:mb-6 transform hover:scale-105 transition-all duration-300"
                     style={{
                       background: 'linear-gradient(135deg, #3B82F6, #00d9ff)',
                       boxShadow: '0 20px 60px rgba(59, 130, 246, 0.4), 0 0 40px rgba(0, 217, 255, 0.3)',
                       animation: 'pulse-glow 3s ease-in-out infinite'
                     }}
                   >
-                    <svg width="64" height="64" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg width="48" height="48" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 sm:w-16 sm:h-16">
                       <circle cx="60" cy="60" r="8" fill="white"/>
                       
                       {/* الدائرة الخارجية */}
@@ -1626,7 +1626,7 @@ export default function ChatPage() {
                 </div>
                 
                 <div 
-                  className="flex items-end gap-2 sm:gap-3 backdrop-blur-xl rounded-3xl shadow-2xl transition-all duration-300 p-4 sm:p-5"
+                  className="flex items-end gap-2 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-2xl transition-all duration-300 p-3 sm:p-4 md:p-5"
                   style={{
                     background: 'linear-gradient(135deg, rgba(10, 10, 20, 0.8), rgba(20, 20, 40, 0.8))',
                     border: '1px solid rgba(59, 130, 246, 0.3)',
@@ -1635,7 +1635,7 @@ export default function ChatPage() {
                 >
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex-shrink-0 p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-110" 
+                    className="hidden sm:flex flex-shrink-0 p-2.5 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-110" 
                     style={{
                       background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(0, 217, 255, 0.1))',
                       border: '1px solid rgba(59, 130, 246, 0.3)'
@@ -1673,8 +1673,8 @@ export default function ChatPage() {
                         handleSend();
                       }
                     }}
-                    placeholder={isVoiceSearchVisible ? "🎤 استمع للصوت..." : "اكتب رسالتك هنا أو استخدم البحث الصوتي..."}
-                    className="flex-1 resize-none bg-transparent text-white placeholder-gray-400 outline-none text-sm sm:text-base px-3 sm:px-4 py-2 sm:py-3 rounded-2xl"
+                    placeholder={isVoiceSearchVisible ? "🎤 استمع للصوت..." : "اكتب رسالتك هنا..."}
+                    className="flex-1 resize-none bg-transparent text-white placeholder-gray-400 outline-none text-sm sm:text-base px-2 sm:px-3 md:px-4 py-2 rounded-2xl"
                     style={{
                       background: 'transparent',
                       border: 'none'
@@ -1711,7 +1711,7 @@ export default function ChatPage() {
                   <button 
                     onClick={handleSend} 
                     disabled={!inputValue.trim() || isTyping} 
-                    className="flex-shrink-0 p-3 sm:p-4 text-white rounded-2xl transition-all duration-300 transform hover:scale-105"
+                    className="flex-shrink-0 p-2.5 sm:p-3 md:p-4 text-white rounded-2xl transition-all duration-300 transform hover:scale-105"
                     style={{
                       background: (!inputValue.trim() || isTyping) 
                         ? 'linear-gradient(135deg, #6B7280, #4B5563)' 
@@ -1722,15 +1722,15 @@ export default function ChatPage() {
                         : '0 0 30px rgba(59, 130, 246, 0.5)',
                       opacity: (!inputValue.trim() || isTyping) ? '0.6' : '1',
                       cursor: (!inputValue.trim() || isTyping) ? 'not-allowed' : 'pointer',
-                      minWidth: '50px',
-                      height: '50px',
+                      minWidth: '45px',
+                      height: '45px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}
                     title="إرسال الرسالة"
                   >
-                    <Send className="w-5 sm:w-6 h-5 sm:h-6" />
+                    <Send className="w-5 h-5" />
                   </button>
 
                 </div>
@@ -1768,7 +1768,7 @@ export default function ChatPage() {
           ) : (
             <>
               <div className="flex-1 overflow-y-auto relative">
-                <div className="max-w-5xl mx-auto px-6 py-8">
+                <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
                   {currentConversation?.messages.map((message) => (
                     <MessageBubble 
                       key={message.id} 
@@ -1835,9 +1835,9 @@ export default function ChatPage() {
                   boxShadow: isDark ? '0 -4px 20px rgba(59, 130, 246, 0.2)' : '0 -4px 20px rgba(0, 0, 0, 0.1)'
                 }}
               >
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5 sm:py-6">
+                <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6 py-3 sm:py-5 md:py-6">
                   <div 
-                    className="flex items-end gap-2 sm:gap-3 rounded-3xl shadow-xl transition-all duration-300 p-4 sm:p-5"
+                    className="flex items-end gap-2 rounded-2xl sm:rounded-3xl shadow-xl transition-all duration-300 p-2 sm:p-4 md:p-5"
                     style={{
                       background: isDark 
                         ? 'linear-gradient(135deg, rgba(10, 10, 20, 0.9), rgba(20, 20, 40, 0.9))'
@@ -1848,7 +1848,7 @@ export default function ChatPage() {
                   >
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex-shrink-0 p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-110" 
+                      className="hidden sm:flex flex-shrink-0 p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 transform hover:scale-110" 
                       style={{
                         background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(0, 217, 255, 0.1))',
                         border: '1px solid rgba(59, 130, 246, 0.3)'
@@ -1875,8 +1875,8 @@ export default function ChatPage() {
                           handleSend();
                         }
                       }}
-                      placeholder={isVoiceSearchVisible ? "🎤 استمع للصوت..." : "اكتب رسالتك هنا أو استخدم البحث الصوتي..."}
-                      className={`flex-1 resize-none bg-transparent outline-none text-sm sm:text-base px-3 sm:px-4 py-2 sm:py-3 rounded-2xl ${
+                      placeholder={isVoiceSearchVisible ? "🎤 استمع للصوت..." : "اكتب رسالتك هنا..."}
+                      className={`flex-1 resize-none bg-transparent outline-none text-sm sm:text-base px-2 sm:px-3 md:px-4 py-2 rounded-2xl ${
                         isDark ? 'text-white placeholder-gray-400' : 'text-gray-900 placeholder-gray-500'
                       }`}
                       rows={2}

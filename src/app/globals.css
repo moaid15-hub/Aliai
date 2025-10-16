@@ -28,6 +28,14 @@
   width: 10px;
 }
 
+/* Responsive scrollbar for mobile */
+@media (max-width: 640px) {
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
 /* Custom animations */
 @keyframes fadeIn {
   from {
@@ -76,4 +84,32 @@
   line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Improve mobile input experience */
+@media (max-width: 640px) {
+  textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
 }
