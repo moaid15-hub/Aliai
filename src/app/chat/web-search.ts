@@ -33,17 +33,24 @@ interface SearchResponse {
 }
 
 interface MultiSourceResponse {
-  query: string;
-  primarySource: {
+  query?: string;
+  primarySource?: {
     source: string;
     icon: string;
     results: SearchResult[];
   };
-  additionalSources: Array<{
+  additionalSources?: Array<{
     source: string;
     icon: string;
     results: SearchResult[];
   }>;
+  // بنية بديلة لنتائج مباشرة
+  google?: SearchResult[];
+  youtube?: SearchResult[];
+  wikipedia?: SearchResult[];
+  stackoverflow?: SearchResult[];
+  github?: SearchResult[];
+  totalResults: number;
   searchTime: number;
 }
 
@@ -381,10 +388,25 @@ async function searchYouTube(query: string, maxResults: number = 5): Promise<Sea
   if (!apiKey) return [];
   
   try {
+    // تحسين الـ query
+    let enhancedQuery = query
+      .replace(/ابحث\s+(عن|لي|في)/g, '')
+      .replace(/اليوم|الآن|حالياً/g, '')
+      .trim();
+    
+    // إضافة كلمات مساعدة بناءً على نوع البحث
+    if (query.match(/رياض|كرة|مباراة|فريق|هدف|بطولة/i)) {
+      enhancedQuery += ' رياضة';
+    } else if (query.match(/طبخ|وصفة|طعام|أكل/i)) {
+      enhancedQuery += ' شرح';
+    } else if (query.match(/كيف|طريقة|خطوات/i)) {
+      enhancedQuery += ' تعليم شرح';
+    }
+    
     const params = new URLSearchParams({
       part: 'snippet',
-      q: query,
-      maxResults: maxResults.toString(),
+      q: enhancedQuery,
+      maxResults: (maxResults * 2).toString(), // ضعف العدد للفلترة
       type: 'video',
       key: apiKey,
       relevanceLanguage: 'ar'
@@ -395,15 +417,30 @@ async function searchYouTube(query: string, maxResults: number = 5): Promise<Sea
     
     const data = await response.json();
     
-    return data.items?.map((item: any) => ({
-      title: item.snippet.title,
-      url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-      snippet: item.snippet.description,
-      content: item.snippet.description,
-      thumbnail: item.snippet.thumbnails?.medium?.url,
-      author: item.snippet.channelTitle,
-      relevanceScore: 0.9
-    })) || [];
+    // فلترة النتائج
+    const searchTerms = query.toLowerCase();
+    const filtered = data.items
+      ?.filter((item: any) => {
+        const title = item.snippet.title.toLowerCase();
+        const description = item.snippet.description.toLowerCase();
+        
+        // تحقق من الارتباط
+        return searchTerms.split(' ').some(term => 
+          term.length > 3 && (title.includes(term) || description.includes(term))
+        );
+      })
+      .slice(0, maxResults) // العدد المطلوب بعد الفلترة
+      .map((item: any) => ({
+        title: item.snippet.title,
+        url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+        snippet: item.snippet.description,
+        content: item.snippet.description,
+        thumbnail: item.snippet.thumbnails?.medium?.url,
+        author: item.snippet.channelTitle,
+        relevanceScore: 0.9
+      })) || [];
+    
+    return filtered;
   } catch (error) {
     console.error('خطأ YouTube:', error);
     return [];
@@ -412,12 +449,18 @@ async function searchYouTube(query: string, maxResults: number = 5): Promise<Sea
 
 async function searchWikipedia(query: string, maxResults: number = 3): Promise<SearchResult[]> {
   try {
+    // تحسين الـ query للبحث الأفضل
+    const cleanQuery = query
+      .replace(/ابحث\s+(عن|لي|في)/g, '')
+      .replace(/اليوم|الآن|حالياً/g, '')
+      .trim();
+    
     const params = new URLSearchParams({
       action: 'query',
       list: 'search',
-      srsearch: query,
+      srsearch: cleanQuery,
       format: 'json',
-      srlimit: maxResults.toString(),
+      srlimit: (maxResults * 2).toString(), // نجيب ضعف العدد للفلترة
       origin: '*'
     });
     
@@ -426,13 +469,30 @@ async function searchWikipedia(query: string, maxResults: number = 3): Promise<S
     
     const data = await response.json();
     
-    return data.query?.search?.map((item: any) => ({
-      title: item.title,
-      url: `https://ar.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
-      snippet: item.snippet.replace(/<[^>]*>/g, ''),
-      content: item.snippet.replace(/<[^>]*>/g, ''),
-      relevanceScore: 0.85
-    })) || [];
+    // فلترة النتائج غير المرتبطة
+    const filtered = data.query?.search
+      ?.filter((item: any) => {
+        const title = item.title.toLowerCase();
+        const snippet = item.snippet.toLowerCase();
+        const searchTerms = cleanQuery.toLowerCase();
+        
+        // تحقق من وجود كلمات البحث في العنوان أو الوصف
+        return title.includes(searchTerms) || 
+               snippet.includes(searchTerms) ||
+               searchTerms.split(' ').some(term => 
+                 term.length > 3 && (title.includes(term) || snippet.includes(term))
+               );
+      })
+      .slice(0, maxResults) // خذ العدد المطلوب بعد الفلترة
+      .map((item: any) => ({
+        title: item.title,
+        url: `https://ar.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet: item.snippet.replace(/<[^>]*>/g, ''),
+        content: item.snippet.replace(/<[^>]*>/g, ''),
+        relevanceScore: 0.85
+      })) || [];
+    
+    return filtered;
   } catch (error) {
     console.error('خطأ Wikipedia:', error);
     return [];
@@ -506,27 +566,34 @@ async function searchGitHub(query: string, maxResults: number = 5): Promise<Sear
 // 🧠 Smart Multi-Source Search
 // ============================================
 
-async function smartMultiSourceSearch(query: string, maxResults: number = 5): Promise<MultiSourceResponse> {
+async function smartMultiSourceSearch(
+  query: string, 
+  maxResults: number = 5,
+  searchMode: 'normal' | 'advanced' = 'advanced' // الوضع الجديد
+): Promise<MultiSourceResponse> {
   const startTime = Date.now();
   
-  console.log('🧠 بحث ذكي متعدد المصادر...');
+  console.log(`🧠 بحث ذكي (${searchMode})...`);
   
   const detectedSources = detectBestSource(query);
   console.log('🎯 المصادر المكتشفة:', detectedSources);
   
-  // 🔍 دائماً نبحث في Google أولاً (مصدر رئيسي)
+  // 🔍 البحث في Google (مصدر رئيسي)
   const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
   const googleCx = process.env.GOOGLE_SEARCH_ENGINE_ID;
   
   let googleResults: SearchResult[] = [];
   
+  // تحديد عدد نتائج Google حسب الوضع
+  const googleCount = searchMode === 'normal' ? 3 : 5;
+  
   if (googleKey && googleCx) {
     try {
-      console.log('🔍 جارٍ البحث في Google...');
+      console.log(`🔍 جارٍ البحث في Google (${googleCount} نتائج)...`);
       const googleResponse = await googleSearch(query, {
         apiKey: googleKey,
         searchEngineId: googleCx,
-        numResults: maxResults,
+        numResults: googleCount,
         language: DEFAULT_CONFIG.language,
         country: DEFAULT_CONFIG.country,
         safeSearch: DEFAULT_CONFIG.safeSearch
@@ -538,7 +605,20 @@ async function smartMultiSourceSearch(query: string, maxResults: number = 5): Pr
     }
   }
   
-  // 🎯 البحث في المصادر المتخصصة بالتوازي
+  // 🚫 في البحث العادي: نتائج Google فقط
+  if (searchMode === 'normal') {
+    return {
+      google: googleResults,
+      youtube: [],
+      wikipedia: [],
+      stackoverflow: [],
+      github: [],
+      totalResults: googleResults.length,
+      searchTime: Date.now() - startTime
+    };
+  }
+  
+  // 🎯 في البحث المتقدم: نبحث في المصادر الأخرى
   const searchPromises: Promise<SearchResult[]>[] = [];
   const sourceNames: string[] = [];
   const sourceIcons: string[] = [];
@@ -546,12 +626,12 @@ async function smartMultiSourceSearch(query: string, maxResults: number = 5): Pr
   for (const source of detectedSources) {
     switch (source) {
       case 'youtube':
-        searchPromises.push(searchYouTube(query, maxResults));
+        searchPromises.push(searchYouTube(query, 3)); // 3 فيديوهات
         sourceNames.push('YouTube');
         sourceIcons.push('🎥');
         break;
       case 'wikipedia':
-        searchPromises.push(searchWikipedia(query, maxResults));
+        searchPromises.push(searchWikipedia(query, 2)); // مقالتين
         sourceNames.push('ويكيبيديا');
         sourceIcons.push('📚');
         break;
@@ -605,6 +685,7 @@ async function smartMultiSourceSearch(query: string, maxResults: number = 5): Pr
     query,
     primarySource,
     additionalSources,
+    totalResults: primarySource.results.length + additionalSources.reduce((sum, s) => sum + s.results.length, 0),
     searchTime: Date.now() - startTime
   };
 }
@@ -694,12 +775,12 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
 // ============================================
 
 export function formatSearchResults(response: SearchResponse | MultiSourceResponse): string {
-  // تحقق من النوع
-  if ('primarySource' in response) {
+  // تحقق من النوع - البحث المتقدم أو العادي
+  if ('primarySource' in response || 'google' in response) {
     return formatMultiSourceResults(response);
   }
   
-  return formatGoogleResults(response);
+  return formatGoogleResults(response as SearchResponse);
 }
 
 function formatGoogleResults(response: SearchResponse): string {
@@ -737,6 +818,27 @@ function formatGoogleResults(response: SearchResponse): string {
 
 function formatMultiSourceResults(response: MultiSourceResponse): string {
   const { query, primarySource, additionalSources, searchTime } = response;
+  
+  // التعامل مع البنية الجديدة (البحث العادي)
+  if (!primarySource && response.google) {
+    let formatted = `🔍 **نتائج البحث: "${query}"**\n\n`;
+    formatted += `⏱️ ${(searchTime / 1000).toFixed(2)} ثانية • 📊 ${response.totalResults} نتيجة\n\n---\n\n`;
+    
+    response.google.slice(0, 3).forEach((r, i) => {
+      formatted += `### ${i + 1}. ${r.title}\n\n`;
+      if (r.displayLink) formatted += `🌐 **${r.displayLink}**\n\n`;
+      if (r.snippet) formatted += `${r.snippet}\n\n`;
+      formatted += `> [🔗 **افتح الرابط**](${r.url})\n\n`;
+    });
+    
+    formatted += `💡 تبي تفاصيل أكثر؟ 😊`;
+    return formatted;
+  }
+  
+  // التعامل مع البنية القديمة (البحث المتقدم)
+  if (!primarySource || !additionalSources) {
+    return `لم يتم العثور على نتائج`;
+  }
   
   let formatted = `🧠 **نتائج البحث الذكي: "${query}"**\n\n`;
   formatted += `⏱️ ${(searchTime / 1000).toFixed(2)} ثانية • 📊 ${1 + additionalSources.length} مصدر\n\n---\n\n`;
