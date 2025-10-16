@@ -14,6 +14,20 @@ export interface Message {
     url: string;
     snippet: string;
   }>;
+  needsUserChoice?: boolean;
+  searchOptions?: {
+    primary: 'google' | 'youtube';
+    advanced: boolean;
+  };
+  videos?: Array<{
+    id: string;
+    title: string;
+    thumbnail: string;
+    url: string;
+    channel: string;
+    views: string;
+    duration?: string;
+  }>;
 }
 
 export interface Conversation {
@@ -31,5 +45,5 @@ export interface Settings {
 
 export interface ToastData {
   message: string;
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'info' | 'loading';
 }

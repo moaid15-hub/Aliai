@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
-import { Send, Sparkles, Menu, Plus, Clock, Moon, Sun, LogOut, User, Paperclip, ExternalLink, Search, Zap, Brain, Copy, Download, Edit2, Trash2, Check, X, Settings, Mic, Volume2, Share2, MessageSquare, Palette } from "lucide-react";
+import { Send, Sparkles, Menu, Plus, Clock, Moon, Sun, LogOut, User, Paperclip, ExternalLink, Search, Zap, Brain, Copy, Download, Edit2, Trash2, Check, X, Settings, Mic, Volume2, Share2, MessageSquare, Palette, Info } from "lucide-react";
 
 // الاستيرادات من ملفاتنا
 import { Message, Conversation, Settings as SettingsType, ToastData } from './types';
@@ -88,19 +88,38 @@ class ErrorBoundary extends React.Component<
 // COMPONENTS
 // =======================
 
-const Toast = ({ message, type = 'success', onClose }: { message: string; type?: 'success' | 'error'; onClose: () => void }) => (
-  <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-2xl shadow-2xl animate-fadeIn flex items-center gap-3 ${
-    type === 'success' 
-      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white' 
-      : 'bg-gradient-to-r from-red-600 to-rose-600 text-white'
-  }`}>
-    {type === 'success' ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
-    <span className="font-semibold">{message}</span>
-    <button onClick={onClose} className="ml-2 hover:opacity-80">
-      <X className="w-4 h-4" />
-    </button>
-  </div>
-);
+const Toast = ({ message, type = 'success', onClose }: { message: string; type?: 'success' | 'error' | 'info' | 'loading'; onClose: () => void }) => {
+  const styles = {
+    success: 'bg-gradient-to-r from-green-600 to-emerald-600 text-white',
+    error: 'bg-gradient-to-r from-red-600 to-rose-600 text-white',
+    info: 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white',
+    loading: 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+  };
+
+  const icons = {
+    success: <Check className="w-5 h-5" />,
+    error: <X className="w-5 h-5" />,
+    info: <Info className="w-5 h-5" />,
+    loading: (
+      <div className="relative w-5 h-5">
+        <div className="absolute inset-0 border-2 border-white/30 rounded-full"></div>
+        <div className="absolute inset-0 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    )
+  };
+
+  return (
+    <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-2xl shadow-2xl animate-fadeIn flex items-center gap-3 ${styles[type]}`}>
+      {icons[type]}
+      <span className="font-semibold">{message}</span>
+      {type !== 'loading' && (
+        <button onClick={onClose} className="ml-2 hover:opacity-80">
+          <X className="w-4 h-4" />
+        </button>
+      )}
+    </div>
+  );
+};
 
 const TypingIndicator = ({ isAutoSearching = false }: { isAutoSearching?: boolean }) => (
   <div className="flex items-center gap-2 px-5 py-4 bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-cyan-900/20 rounded-3xl shadow-lg border border-purple-100 dark:border-purple-800/30">
@@ -169,6 +188,7 @@ const MessageBubble = ({
   onCopy, 
   onEdit, 
   onDelete,
+  onSearch,
   isDark 
 }: { 
   message: Message; 
@@ -176,6 +196,7 @@ const MessageBubble = ({
   onCopy: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onSearch?: (source: 'google' | 'youtube' | 'advanced') => void;
   isDark: boolean;
 }) => {
   const isUser = message.role === 'user';
@@ -258,6 +279,25 @@ const MessageBubble = ({
                 )
               ))}
             </div>
+            
+            {/* ✨ جديد: أزرار اختيار البحث */}
+            {message.needsUserChoice && message.searchOptions && onSearch && (
+              <div className="flex flex-wrap gap-3 mt-4 justify-center">
+                <button
+                  onClick={() => onSearch(message.searchOptions!.primary === 'youtube' ? 'youtube' : 'google')}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold text-sm flex items-center gap-2"
+                >
+                  {message.searchOptions!.primary === 'youtube' ? '🎥 YouTube' : '🌐 Google'}
+                </button>
+                
+                <button
+                  onClick={() => onSearch('advanced')}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold text-sm flex items-center gap-2"
+                >
+                  🔍 بحث متقدم شامل
+                </button>
+              </div>
+            )}
             
             {message.sources && message.sources.length > 0 && (
               <div className="mt-5 space-y-3">
@@ -602,9 +642,11 @@ export default function ChatPage() {
     [conversations, currentConversationId]
   );
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' | 'loading' = 'success') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    if (type !== 'loading') {
+      setTimeout(() => setToast(null), 3000);
+    }
   }, []);
 
   useEffect(() => {
@@ -842,7 +884,75 @@ export default function ChatPage() {
       setIsAutoSearching(false); // إعادة تعيين حالة البحث التلقائي
       showToast('حدث خطأ، حاول مرة أخرى', 'error');
     }
-  }, [inputValue, currentConversationId, currentConversation, settings, showToast]);
+  }, [inputValue, currentConversationId, currentConversation, settings, showToast, isAutoSearching]);
+
+  // ✨ جديد: دالة البحث حسب المصدر
+  const handleSearch = useCallback(async (source: 'google' | 'youtube' | 'advanced') => {
+    console.log(`🔍 User selected search source: ${source}`);
+    
+    // 🎯 إشعارات تقدمية
+    const searchLabels = {
+      google: 'Google',
+      youtube: 'YouTube',
+      advanced: 'جميع المصادر'
+    };
+    
+    showToast(`⏳ جاري البحث في ${searchLabels[source]}...`, 'loading');
+    setIsTyping(true);
+    
+    // الحصول على آخر رسالة من المستخدم
+    const lastUserMessage = currentConversation?.messages
+      .filter(m => m.role === 'user')
+      .pop()?.content || '';
+    
+    if (!lastUserMessage) {
+      console.warn('⚠️ No user message found');
+      setIsTyping(false);
+      setToast(null);
+      return;
+    }
+    
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: currentConversation?.messages || [],
+          searchChoice: source
+        })
+      });
+      
+      const result = await response.json();
+      console.log('📥 Search result received:', result);
+      
+      if (result.success) {
+        // ✅ إشعار النجاح
+        const totalResults = result.sources?.google?.length + result.sources?.youtube?.length + result.sources?.wikipedia?.length || 0;
+        showToast(`✅ وجدت ${totalResults} نتيجة!`, 'success');
+        
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: result.message,
+          timestamp: new Date(),
+          provider: result.selectedProvider || source,
+          sources: result.sources
+        };
+        
+        setConversations(prev => prev.map(conv => 
+          conv.id === currentConversationId 
+            ? { ...conv, messages: [...conv.messages, aiMessage] }
+            : conv
+        ));
+      }
+      
+      setIsTyping(false);
+    } catch (error) {
+      console.error('❌ Search error:', error);
+      setIsTyping(false);
+      showToast('حدث خطأ في البحث', 'error');
+    }
+  }, [currentConversationId, currentConversation, showToast]);
 
   const handleCopyMessage = useCallback(async (content: string) => {
     const success = await copyToClipboard(content);
@@ -1667,6 +1777,7 @@ export default function ChatPage() {
                       onCopy={() => handleCopyMessage(message.content)}
                       onEdit={() => handleEditMessage(message.id)}
                       onDelete={() => handleDeleteMessage(message.id)}
+                      onSearch={handleSearch}
                       isDark={isDark}
                     />
                   ))}

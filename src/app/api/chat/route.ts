@@ -286,7 +286,7 @@ function Counter() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, provider } = await request.json();
+    const { messages, provider, searchChoice } = await request.json();
     
     // إذا لم يتم تحديد مزود، استخدم النظام الذكي
     const lastMessage = messages[messages.length - 1];
@@ -327,6 +327,166 @@ export async function POST(request: NextRequest) {
     if (needsSearch(userInput)) {
       console.log('🔍 تم اكتشاف طلب بحث، جارٍ البحث الذكي متعدد المصادر...');
       try {
+        // ✨ جديد: معالجة اختيار المصدر من المستخدم
+        if (searchChoice === 'google') {
+          console.log('🌐 بحث سريع في Google فقط...');
+          const searchResponse = await smartSearch(userInput, 3);
+          const formattedResults = formatSearchResults(searchResponse);
+          
+          return NextResponse.json({
+            success: true,
+            message: formattedResults,
+            model: 'google-quick-search',
+            selectedProvider: 'google',
+            isSearchResult: true,
+            searchMetadata: {
+              query: userInput,
+              sources: 'Google',
+              totalResults: searchResponse.totalResults,
+              searchTime: searchResponse.searchTime
+            }
+          });
+        }
+        
+        if (searchChoice === 'youtube') {
+          console.log('🎥 بحث سريع في YouTube فقط...');
+          const searchResponse = await smartSearch(userInput, 5);
+          
+          // فلترة نتائج YouTube فقط
+          let formatted = `🎥 **نتائج YouTube: "${userInput}"**\n\n`;
+          
+          if (searchResponse.additionalSources) {
+            const youtubeSource = searchResponse.additionalSources.find(s => s.source === 'YouTube');
+            if (youtubeSource) {
+              youtubeSource.results.forEach((r: any, i: number) => {
+                if (r.thumbnail) {
+                  formatted += `[![${r.title}](${r.thumbnail})](${r.url} "${r.title}")\n\n`;
+                }
+                formatted += `**${i + 1}. ${r.title}**\n\n`;
+                if (r.author) formatted += `👤 ${r.author}\n\n`;
+                if (r.snippet) formatted += `${r.snippet}\n\n`;
+                formatted += `> [🔗 **افتح الرابط**](${r.url})\n\n`;
+              });
+            }
+          }
+          
+          return NextResponse.json({
+            success: true,
+            message: formatted,
+            model: 'youtube-quick-search',
+            selectedProvider: 'youtube',
+            isSearchResult: true,
+            searchMetadata: {
+              query: userInput,
+              sources: 'YouTube',
+              totalResults: searchResponse.totalResults,
+              searchTime: searchResponse.searchTime
+            }
+          });
+        }
+        
+        // ✨ جديد: البحث المتقدم الشامل
+        if (searchChoice === 'advanced') {
+          console.log('🔍 بحث متقدم شامل في كل المصادر...');
+          const searchResponse = await smartSearch(userInput, 5);
+          const formattedResults = formatSearchResults(searchResponse);
+          
+          let sources = 'Google';
+          let totalResults = 0;
+          
+          if (searchResponse.primarySource && searchResponse.additionalSources) {
+            sources = searchResponse.primarySource.source + ', ' + searchResponse.additionalSources.map(s => s.source).join(', ');
+            totalResults = searchResponse.primarySource.results.length + searchResponse.additionalSources.reduce((sum, s) => sum + s.results.length, 0);
+          } else if (searchResponse.google) {
+            sources = 'Google';
+            totalResults = searchResponse.google.length;
+          }
+          
+          return NextResponse.json({
+            success: true,
+            message: formattedResults,
+            model: 'advanced-multi-source-search',
+            selectedProvider: 'google-youtube-wikipedia-stackoverflow',
+            isSearchResult: true,
+            searchMetadata: {
+              query: userInput,
+              sources: sources,
+              totalResults: totalResults,
+              searchTime: searchResponse.searchTime
+            }
+          });
+        }
+        
+        // إذا لم يتم اختيار مصدر، نقدم الاقتراحات للمستخدم
+        if (!searchChoice) {
+          console.log('💡 تقديم اقتراحات البحث للمستخدم...');
+          
+          // 🧠 نظام الكشف التلقائي الذكي المتقدم
+          const correctedQuery = userInput
+            .replace(/فيدو/gi, 'فيديو')
+            .replace(/فلم/gi, 'فيلم')
+            .replace(/يوتوب/gi, 'يوتيوب')
+            .replace(/غوغل/gi, 'جوجل');
+          
+          const needsCorrection = correctedQuery !== userInput;
+          
+          // 🎯 الكلمات المفتاحية لكل مصدر
+          const sourcePatterns = {
+            youtube: /فيديو|فيلم|مقطع|يوتيوب|youtube|شاهد|اعرض|شوف|عرض|مسلسل|برنامج|حلقة/i,
+            stackoverflow: /كود|برمجة|خطأ|error|bug|مشكلة برمجية|كيف أبرمج|دالة|function|class|تطوير/i,
+            github: /github|repository|repo|مشروع برمجي|كود مفتوح|open source|library|package/i,
+            wikipedia: /تعريف|من هو|ما هو|ما هي|معنى|شرح|تاريخ|نبذة|موسوعة|ويكيبيديا/i,
+            shopping: /منتج|شراء|سعر|price|buy|اشتري|كم سعر|product|amazon|متجر/i
+          };
+          
+          // 🔍 كشف المصدر المناسب
+          let detectedSource: 'youtube' | 'google' = 'google';
+          let sourceEmoji = '🌐';
+          let sourceName = 'Google';
+          let sourceDescription = 'للمقالات والمعلومات العامة';
+          
+          if (sourcePatterns.youtube.test(userInput)) {
+            detectedSource = 'youtube';
+            sourceEmoji = '🎥';
+            sourceName = 'YouTube';
+            sourceDescription = 'للفيديوهات والمقاطع المرئية';
+          } else if (sourcePatterns.stackoverflow.test(userInput)) {
+            sourceEmoji = '💻';
+            sourceName = 'Google + Stack Overflow';
+            sourceDescription = 'للأسئلة البرمجية والتقنية';
+          } else if (sourcePatterns.github.test(userInput)) {
+            sourceEmoji = '🔧';
+            sourceName = 'GitHub + Google';
+            sourceDescription = 'للمشاريع والأكواد البرمجية';
+          } else if (sourcePatterns.wikipedia.test(userInput)) {
+            sourceEmoji = '📚';
+            sourceName = 'Wikipedia + Google';
+            sourceDescription = 'للتعريفات والمعلومات الموسوعية';
+          } else if (sourcePatterns.shopping.test(userInput)) {
+            sourceEmoji = '🛒';
+            sourceName = 'Google Shopping';
+            sourceDescription = 'للمنتجات والأسعار';
+          }
+          
+          const suggestions = `فهمتك! ${needsCorrection ? `(تقصد: **${correctedQuery}**)` : ''} 
+
+${sourceEmoji} **المصدر المقترح:** ${sourceName}
+${sourceDescription}
+
+أو اضغط للبحث المتقدم الشامل في جميع المصادر 👇`;
+          
+          return NextResponse.json({
+            success: true,
+            message: suggestions,
+            needsUserChoice: true,
+            searchOptions: {
+              primary: detectedSource,
+              advanced: true
+            }
+          });
+        }
+        
+        // البحث التلقائي (fallback)
         const searchResponse = await smartSearch(userInput, 5);
         const formattedResults = formatSearchResults(searchResponse);
         
