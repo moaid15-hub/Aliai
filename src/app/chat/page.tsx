@@ -243,6 +243,8 @@ const MessageBubble = ({
                   <div key={idx} className={`text-[16px] leading-relaxed whitespace-pre-wrap font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
                        dangerouslySetInnerHTML={{
                          __html: part.content
+                           // صور يوتيوب (يجب أن تكون قبل الروابط العادية)
+                           .replace(/\[!\[(.*?)\]\((.*?)\)\]\((.*?)(?:\s+"(.*?)")?\)/g, `<a href="$3" target="_blank" rel="noopener noreferrer" class="block my-3 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]"><img src="$2" alt="$1" title="$4" class="w-full max-w-md rounded-xl" /></a>`)
                            .replace(/### (.*)/g, `<h3 class="text-lg font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-2 mt-4">$1</h3>`)
                            .replace(/## (.*)/g, `<h2 class="text-xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-3 mt-5">$1</h2>`)
                            .replace(/# (.*)/g, `<h1 class="text-2xl font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-4 mt-6">$1</h1>`)
