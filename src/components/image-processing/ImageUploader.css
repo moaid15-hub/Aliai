@@ -1,0 +1,167 @@
+/* تصميم مكون رفع الصور */
+
+.image-uploader {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.upload-zone {
+  border: 2px dashed #ddd;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  transition: all 0.3s ease;
+  background: #fafafa;
+  cursor: pointer;
+}
+
+.upload-zone:hover,
+.upload-zone.dragging {
+  border-color: #4CAF50;
+  background: #f0f8f0;
+  transform: scale(1.02);
+}
+
+.upload-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.upload-zone p {
+  font-size: 18px;
+  font-weight: 500;
+  color: #333;
+  margin: 0;
+}
+
+.upload-zone small {
+  font-size: 13px;
+  color: #666;
+  display: block;
+  margin-top: 8px;
+}
+
+/* قائمة الصور المرفوعة */
+.uploads-list {
+  margin-top: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.upload-item {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.upload-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.upload-item img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.upload-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filename {
+  font-weight: 500;
+  color: #333;
+}
+
+.status {
+  font-size: 13px;
+  color: #666;
+}
+
+/* حالات المعالجة */
+.upload-item.status-pending {
+  border-left: 4px solid #ff9800;
+}
+
+.upload-item.status-processing {
+  border-left: 4px solid #2196F3;
+  animation: pulse 1.5s infinite;
+}
+
+.upload-item.status-completed {
+  border-left: 4px solid #4CAF50;
+}
+
+.upload-item.status-failed {
+  border-left: 4px solid #f44336;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* نتائج المعالجة */
+.result-preview {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.extracted-text {
+  font-size: 13px;
+  color: #555;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.vision-tags {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.vision-tags span {
+  font-size: 12px;
+  padding: 4px 10px;
+  background: #e3f2fd;
+  color: #1976d2;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+/* استجابة للشاشات الصغيرة */
+@media (max-width: 768px) {
+  .upload-zone {
+    padding: 24px;
+  }
+  
+  .upload-item {
+    flex-direction: column;
+  }
+  
+  .upload-item img {
+    width: 100%;
+    height: 200px;
+  }
+}
+
+
