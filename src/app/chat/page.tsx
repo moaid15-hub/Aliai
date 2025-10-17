@@ -5,7 +5,8 @@ import { Send, Sparkles, Menu, Plus, Clock, Moon, Sun, LogOut, User, Paperclip, 
 
 // الاستيرادات من ملفاتنا
 import { Message, Conversation, Settings as SettingsType, ToastData } from './types';
-import { needsSearch, searchWeb } from './search';
+import { needsSearch } from './search';
+import { searchWeb } from './web-search';
 import { sendWithAutoSearch } from './ai-service';
 import { AI_PROVIDERS, STORAGE_KEYS, saveToStorage, loadFromStorage, copyToClipboard, exportConversation } from './config';
 import { CodeEditor } from './ui-components';
@@ -264,6 +265,8 @@ const MessageBubble = ({
                   <div key={idx} className={`text-[14px] sm:text-[16px] leading-relaxed whitespace-pre-wrap break-words font-medium ${isDark ? 'text-gray-100' : 'text-gray-800'}`}
                        dangerouslySetInnerHTML={{
                          __html: part.content
+                           // إخفاء علامة البحث المتقدم
+                           .replace(/__ADVANCED_SEARCH_BUTTON:.+?__/g, '')
                            // صور يوتيوب (يجب أن تكون قبل الروابط العادية)
                            .replace(/\[!\[(.*?)\]\((.*?)\)\]\((.*?)(?:\s+"(.*?)")?\)/g, `<a href="$3" target="_blank" rel="noopener noreferrer" class="block my-2 sm:my-3 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-[1.02]"><img src="$2" alt="$1" title="$4" class="w-full rounded-xl" /></a>`)
                            .replace(/### (.*)/g, `<h3 class="text-lg font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'} mb-2 mt-4">$1</h3>`)
@@ -349,18 +352,39 @@ const MessageBubble = ({
                     );
                   })}
                 </div>
-                
-                {onDeepSearch && (
-                  <div className="flex justify-center pt-2">
-                    <button
-                      onClick={() => onDeepSearch(message.content)}
-                      className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                    >
-                      <Zap className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-                      <span>بحث متقدم</span>
-                    </button>
-                  </div>
-                )}
+              </div>
+            )}
+            
+            {/* زر البحث المتقدم - يظهر لكل رسائل المساعد */}
+            {message.role === 'assistant' && onDeepSearch && (
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={() => {
+                    let query = message.advancedSearchQuery;
+                    
+                    // إذا لم يوجد advancedSearchQuery، استخرج من السطر "البحث عن:"
+                    if (!query) {
+                      const lines = message.content.split('\n');
+                      const searchLine = lines.find(line => line.includes('البحث عن:'));
+                      if (searchLine) {
+                        query = searchLine.split('البحث عن:')[1]?.trim().replace(/\*\*/g, '') || '';
+                      }
+                      
+                      // إذا ما لقينا شي، نستخدم أول 50 حرف
+                      if (!query || query.length < 3) {
+                        query = message.content.substring(0, 50).replace(/[#*🔍:\n]/g, ' ').trim();
+                      }
+                    }
+                    
+                    if (query && query.length > 2) {
+                      onDeepSearch(query);
+                    }
+                  }}
+                  className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                >
+                  <Zap className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                  <span>بحث متقدم</span>
+                </button>
               </div>
             )}
             
@@ -839,14 +863,17 @@ export default function ChatPage() {
       console.log('📥 AI Response received:', result);
       
       if (result.success) {
+        console.log('📦 Sources received:', result.sources); // Debug
         const aiMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: result.message,
           timestamp: new Date(),
           provider: result.usedProvider || 'عقول AI',
-          sources: result.sources
+          sources: result.sources,
+          advancedSearchQuery: (result as any).advancedSearchQuery // 🆕 للبحث المتقدم
         };
+        console.log('💾 Message created with sources:', aiMessage.sources); // Debug
         
         setConversations(prev => prev.map(conv => 
           conv.id === conversationId 
@@ -924,10 +951,11 @@ export default function ChatPage() {
       
       const result = await response.json();
       console.log('📥 Search result received:', result);
+      console.log('📦 Sources in result:', result.sources); // Debug
       
       if (result.success) {
         // ✅ إشعار النجاح
-        const totalResults = result.sources?.google?.length + result.sources?.youtube?.length + result.sources?.wikipedia?.length || 0;
+        const totalResults = result.sources?.length || 0;
         showToast(`✅ وجدت ${totalResults} نتيجة!`, 'success');
         
         const aiMessage: Message = {
@@ -938,6 +966,7 @@ export default function ChatPage() {
           provider: result.selectedProvider || source,
           sources: result.sources
         };
+        console.log('💾 Message created with sources:', aiMessage.sources); // Debug
         
         setConversations(prev => prev.map(conv => 
           conv.id === currentConversationId 
@@ -1125,65 +1154,53 @@ export default function ChatPage() {
     ));
     
     try {
-      const keywords = content.split(' ').slice(0, 5).join(' ');
-      const searchQuery = `${keywords} معلومات تفصيلية`;
+      // استخراج الكلمات المفتاحية من المحتوى
+      let searchQuery = content;
       
-      // Enhanced search with AI and context
-      const conversationContext = conversations
-        .find(c => c.id === currentConversationId)?.messages
-        .slice(-3) // Last 3 messages for context
-        .map(m => ({ role: m.role, content: m.content })) || [];
+      // إذا كان المحتوى طويل جداً (أكثر من 100 حرف)، نأخذ أول جملة أو سطر
+      if (content.length > 100) {
+        // نحاول إيجاد السؤال الأصلي أو أول جملة مفيدة
+        const firstLine = content.split('\n')[0];
+        if (firstLine.length < 100 && firstLine.length > 10) {
+          searchQuery = firstLine;
+        } else {
+          // نأخذ أول 50 حرف
+          searchQuery = content.substring(0, 50);
+        }
+      }
+      
+      console.log('🔍 البحث المتقدم عن:', searchQuery);
       
       const searchResults = await searchWeb(searchQuery, {
-        maxResults: 5,
-        useAI: false, // للسرعة
-        retries: 1
+        maxResults: 10,
+        advancedMode: true // 🔍 بحث متقدم من كل المصادر
       });
+      
+      // استخدام formatSearchResults لعرض النتائج بشكل منسق
+      const { formatSearchResults } = await import('./web-search');
+      const formattedResults = formatSearchResults(searchResults);
+      
+      const deeperMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: formattedResults,
+        timestamp: new Date(),
+        provider: 'advanced-search'
+      };
       
       setConversations(prev => prev.map(conv => 
         conv.id === currentConversationId 
           ? { 
               ...conv, 
-              messages: conv.messages.filter(m => m.id !== loadingMessage.id)
+              messages: [
+                ...conv.messages.filter(m => m.id !== loadingMessage.id),
+                deeperMessage
+              ]
             }
           : conv
       ));
       
-      if (searchResults.results && searchResults.results.length > 0) {
-        const newSources = searchResults.results.map((result: any) => ({
-          title: result.title,
-          url: result.url,
-          snippet: result.content || result.snippet,
-          aiEnhanced: result.aiEnhanced,
-          relevanceScore: result.relevanceScore,
-          category: result.category
-        }));
-        
-        // Enhanced message with AI insights
-        let enhancedContent = searchResults.aiEnhanced && searchResults.summary ? 
-          `🤖 **ملخص ذكي:** ${searchResults.summary}\n\n` : '';
-        
-        enhancedContent += `🔍 **مصادر إضافية ومعلومات أعمق حول الموضوع:**`;
-        
-        if (searchResults.aiEnhanced && searchResults.enhancedQuery !== searchQuery) {
-          enhancedContent += `\n💡 *تم تحسين البحث من "${searchQuery}" إلى "${searchResults.enhancedQuery}"*`;
-        }
-        
-        const deeperMessage: Message = {
-          id: Date.now().toString(),
-          role: 'assistant',
-          content: enhancedContent,
-          timestamp: new Date(),
-          provider: searchResults.aiEnhanced ? 'ai-search' : 'search',
-          sources: newSources
-        };
-        
-        setConversations(prev => prev.map(conv => 
-          conv.id === currentConversationId 
-            ? { ...conv, messages: [...conv.messages, deeperMessage] }
-            : conv
-        ));
-      } else {
+      if (!searchResults.results || searchResults.results.length === 0) {
         showToast('لم يتم العثور على نتائج إضافية', 'error');
       }
     } catch (error) {

@@ -50,8 +50,11 @@ interface MultiSourceResponse {
   wikipedia?: SearchResult[];
   stackoverflow?: SearchResult[];
   github?: SearchResult[];
+  results: SearchResult[]; // النتائج الأولية
+  secondaryResults?: SearchResult[]; // النتائج الثانوية
   totalResults: number;
   searchTime: number;
+  source: string; // المصادر المستخدمة
 }
 
 interface GoogleSearchConfig {
@@ -72,6 +75,21 @@ interface SearchOptions {
   retries?: number;
   smartSearch?: boolean; // جديد: للبحث الذكي متعدد المصادر
   searchMode?: 'normal' | 'advanced'; // وضع البحث: عادي أو متقدم
+  primaryOnly?: boolean; // 🆕 خيار جديد: البحث من Google + YouTube فقط
+  quickSearch?: boolean; // 🚀 بحث سريع: نتيجتين فقط (1 YouTube + 1 Google)
+  advancedMode?: boolean; // 🆕 وضع متقدم: كل المصادر
+}
+
+// ============================================
+// 🖼️ Link Preview & YouTube Thumbnails
+// ============================================
+
+interface LinkPreview {
+  title: string;
+  description: string;
+  image?: string;
+  url: string;
+  type: 'website' | 'youtube' | 'article';
 }
 
 // ⚙️ Configuration
@@ -221,7 +239,106 @@ const EXCLUDE_PATTERNS = [
   'كيف حالك', 'كيفك', 'how are you', 'ما اسمك'
 ];
 
-// أنماط المصادر المتخصصة
+// ============================================
+// 🖼️ Link Preview Functions
+// ============================================
+
+/**
+ * استخراج معرف فيديو YouTube من الرابط
+ */
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  
+  return null;
+}
+
+/**
+ * إنشاء معاينة للرابط
+ */
+function createLinkPreview(result: SearchResult): LinkPreview {
+  // إذا كان فيديو يوتيوب
+  const youtubeId = extractYouTubeId(result.url);
+  if (youtubeId) {
+    return {
+      title: result.title,
+      description: result.snippet,
+      image: `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`, // صورة متوسطة الجودة
+      url: result.url,
+      type: 'youtube'
+    };
+  }
+  
+  // روابط عادية
+  return {
+    title: result.title,
+    description: result.snippet,
+    image: result.thumbnail || result.image?.thumbnailLink,
+    url: result.url,
+    type: result.displayLink?.includes('wikipedia') ? 'article' : 'website'
+  };
+}
+
+/**
+ * تنسيق معاينة الرابط بـ HTML/Markdown
+ */
+function formatLinkPreview(preview: LinkPreview, index: number): string {
+  const isYoutube = preview.type === 'youtube';
+  const icon = isYoutube ? '🎥' : preview.type === 'article' ? '📖' : '🌐';
+  
+  let html = `\n<div class="search-result-card" data-index="${index}">\n`;
+  
+  // العنوان
+  html += `  <div class="result-header">\n`;
+  html += `    <span class="result-number">${index + 1}${icon}</span>\n`;
+  html += `    <h3 class="result-title">${preview.title}</h3>\n`;
+  html += `  </div>\n`;
+  
+  // المحتوى
+  html += `  <div class="result-content">\n`;
+  
+  // الصورة المصغرة
+  if (preview.image) {
+    html += `    <div class="result-thumbnail">\n`;
+    if (isYoutube) {
+      html += `      <img src="${preview.image}" alt="${preview.title}" class="youtube-thumb" />\n`;
+      html += `      <div class="play-overlay">▶</div>\n`;
+    } else {
+      html += `      <img src="${preview.image}" alt="${preview.title}" />\n`;
+    }
+    html += `    </div>\n`;
+  }
+  
+  // الوصف
+  html += `    <div class="result-description">\n`;
+  html += `      <p>${preview.description}</p>\n`;
+  html += `    </div>\n`;
+  
+  html += `  </div>\n`;
+  
+  // رابط الفتح
+  html += `  <div class="result-footer">\n`;
+  html += `    <a href="${preview.url}" target="_blank" rel="noopener noreferrer" class="result-link">\n`;
+  html += `      🔗 ${isYoutube ? 'شاهد الفيديو' : 'اقرأ المزيد'}\n`;
+  html += `    </a>\n`;
+  html += `  </div>\n`;
+  
+  html += `</div>\n`;
+  
+  return html;
+}
+
+// ============================================
+// 🧠 Smart Source Detection
+// ============================================
+
 const SOURCE_PATTERNS = {
   youtube: {
     keywords: ['فيديو', 'شرح', 'تعليم', 'درس', 'كورس', 'video', 'tutorial', 'how to', 'كيف أسوي'],
@@ -254,62 +371,123 @@ const SOURCE_PATTERNS = {
  * 🤔 هل السؤال يحتاج بحث؟
  */
 export function needsSearch(query: string): boolean {
+  if (!query || query.trim().length < 2) return false;
+  
   const lowerQuery = query.toLowerCase().trim();
   
-  if (lowerQuery.length < 8) return false;
-  if (EXCLUDE_PATTERNS.some(p => lowerQuery.includes(p))) return false;
+  // كلمات تحتاج بحث 100%
+  const searchKeywords = [
+    // عربي - بحث مباشر
+    'ابحث', 'دور', 'شوف', 'لقي', 'جيب', 'تتبع',
+    'ابحثلي', 'دورلي', 'شوفلي', 'جيبلي',
+    
+    // عربي - أسئلة
+    'ما هو', 'من هو', 'ما هي', 'من هي', 'كيف', 'متى', 'أين', 'لماذا', 'ليش',
+    'وين', 'شلون', 'كم', 'هل',
+    
+    // عربي - معلومات
+    'معلومات', 'تفاصيل', 'شرح', 'تعليم', 'دروس', 'كورس', 'دورة',
+    'اخبار', 'جديد', 'احدث', 'آخر', 'حديث',
+    
+    // عربي - مقارنات
+    'افضل', 'احسن', 'الأفضل', 'الأحسن', 'مقارنة', 'فرق',
+    
+    // English - Direct
+    'search', 'find', 'look', 'google', 'show me',
+    
+    // English - Questions  
+    'what is', 'who is', 'how to', 'when', 'where', 'why',
+    'what are', 'who are', 'how do',
+    
+    // English - Information
+    'information', 'details', 'explain', 'tutorial', 'course', 'lessons',
+    'news', 'latest', 'recent', 'update',
+    
+    // English - Comparisons
+    'best', 'better', 'compare', 'vs', 'versus', 'difference',
+    
+    // أسعار ومنتجات
+    'سعر', 'ثمن', 'كم يكلف', 'بكم', 'price', 'cost', 'how much',
+    
+    // أرقام وإحصائيات
+    'كم عدد', 'كم يبلغ', 'إحصائيات', 'statistics', 'how many',
+    
+    // محتوى تعليمي
+    'تعلم', 'اتعلم', 'علمني', 'learn', 'teach me',
+    'مبتدئ', 'للمبتدئين', 'beginner', 'for beginners',
+    'شروحات', 'tutorials', 'guides'
+  ];
   
-  const hasKeywords = SEARCH_KEYWORDS.some(k => lowerQuery.includes(k.toLowerCase()));
+  // تحقق من الكلمات المفتاحية
+  const hasKeyword = searchKeywords.some(keyword => 
+    lowerQuery.includes(keyword.toLowerCase())
+  );
   
-  const hasSearchPatterns = [
-    /\b(في|من|حول|عن|about|of)\s+\w{4,}/g,
-    /\b(كيف|how)\s+(يمكن|can)\s+\w+/g,
-    /\b(ما هو|what is)\s+\w{3,}/g,
-    /\d{4}|\b(عام|سنة|year)\b/g,
-  ].some(pattern => pattern.test(lowerQuery));
+  if (hasKeyword) return true;
   
-  const isLongQuery = lowerQuery.length > 15;
+  // أنماط regex للأسئلة
+  const questionPatterns = [
+    /^(ما|من|كيف|متى|أين|لماذا|ليش|هل|وين|شلون)\s/,
+    /\?$/,
+    /^(what|who|how|when|where|why|is|are|do|does)\s/i
+  ];
   
-  return hasKeywords || hasSearchPatterns || isLongQuery;
+  const isQuestion = questionPatterns.some(pattern => pattern.test(lowerQuery));
+  if (isQuestion) return true;
+  
+  // إذا فيه كلمة واحدة فقط (غالباً اسم شيء للبحث)
+  const words = lowerQuery.split(/\s+/).filter(w => w.length > 0);
+  if (words.length === 1 && words[0].length > 2) {
+    return true; // "برمجة"، "react"، إلخ
+  }
+  
+  // إذا فيه كلمتين أو أكثر وتبدو مثل استفسار
+  if (words.length >= 2) {
+    // "دروس برمجه" ، "تعلم Python" ، إلخ
+    const learningWords = ['دروس', 'تعلم', 'شرح', 'كورس', 'tutorial', 'learn', 'course'];
+    const hasLearning = words.some(word => 
+      learningWords.some(lw => word.includes(lw) || lw.includes(word))
+    );
+    if (hasLearning) return true;
+  }
+  
+  return false;
 }
 
 /**
  * كشف المصدر المناسب
  */
-function detectBestSource(query: string): string[] {
+function detectBestSource(query: string, searchLevel: 'primary' | 'secondary' = 'primary'): string[] {
   const lowerQuery = query.toLowerCase();
+  
+  // 🎯 البحث الأولي: YouTube + Google (يوتيوب أولاً دائماً)
+  if (searchLevel === 'primary') {
+    // ✅ يوتيوب دائماً في المقدمة
+    return ['youtube', 'google'];
+  }
+  
+  // 🔍 البحث الثانوي: باقي المصادر
   const sources: Array<{ name: string; priority: number; matches: number }> = [];
   
-  for (const [sourceName, config] of Object.entries(SOURCE_PATTERNS)) {
-    const matches = config.keywords.filter(k => lowerQuery.includes(k.toLowerCase())).length;
-    
-    if (matches > 0) {
-      sources.push({ name: sourceName, priority: config.priority, matches });
-    }
+  // Wikipedia
+  if (/من هو|ما هو|ما هي|تعريف|معنى|who is|what is|define/i.test(lowerQuery)) {
+    sources.push({ name: 'wikipedia', priority: 1, matches: 1 });
   }
   
-  sources.sort((a, b) => {
-    if (a.matches !== b.matches) return b.matches - a.matches;
-    return a.priority - b.priority;
-  });
-  
-  // ✨ دائماً نضيف Wikipedia و YouTube كمصادر إضافية (للبحث الشامل)
-  const detectedSources = sources.slice(0, 2).map(s => s.name);
-  
-  // إذا ما في مصادر محددة، نضيف Wikipedia و YouTube تلقائياً
-  if (detectedSources.length === 0) {
-    return ['wikipedia', 'youtube'];
+  // Stack Overflow
+  if (/خطأ|error|bug|كود|code|برمجة|programming/i.test(lowerQuery)) {
+    sources.push({ name: 'stackoverflow', priority: 1, matches: 1 });
   }
   
-  // نتأكد إن Wikipedia و YouTube موجودة
-  if (!detectedSources.includes('wikipedia')) {
-    detectedSources.push('wikipedia');
-  }
-  if (!detectedSources.includes('youtube') && detectedSources.length < 3) {
-    detectedSources.push('youtube');
+  // GitHub
+  if (/مشروع|project|repository|repo|source code/i.test(lowerQuery)) {
+    sources.push({ name: 'github', priority: 2, matches: 1 });
   }
   
-  return detectedSources.slice(0, 3); // أقصى 3 مصادر إضافية
+  return sources
+    .sort((a, b) => b.priority - a.priority || b.matches - a.matches)
+    .slice(0, 2)
+    .map(s => s.name);
 }
 
 // ============================================
@@ -385,67 +563,114 @@ async function googleSearchWithRetry(
 // ============================================
 
 async function searchYouTube(query: string, maxResults: number = 5): Promise<SearchResult[]> {
-  const apiKey = process.env.YOUTUBE_API_KEY;
-  if (!apiKey) return [];
-  
   try {
-    // تحسين الـ query
-    let enhancedQuery = query
-      .replace(/ابحث\s+(عن|لي|في)/g, '')
-      .replace(/اليوم|الآن|حالياً/g, '')
-      .trim();
-    
-    // إضافة كلمات مساعدة بناءً على نوع البحث
-    if (query.match(/رياض|كرة|مباراة|فريق|هدف|بطولة/i)) {
-      enhancedQuery += ' رياضة';
-    } else if (query.match(/طبخ|وصفة|طعام|أكل/i)) {
-      enhancedQuery += ' شرح';
-    } else if (query.match(/كيف|طريقة|خطوات/i)) {
-      enhancedQuery += ' تعليم شرح';
+    const apiKey = process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ YouTube API Key غير موجود');
+      return [];
     }
     
     const params = new URLSearchParams({
       part: 'snippet',
-      q: enhancedQuery,
-      maxResults: (maxResults * 2).toString(), // ضعف العدد للفلترة
+      q: query,
       type: 'video',
+      maxResults: maxResults.toString(),
       key: apiKey,
-      relevanceLanguage: 'ar'
+      relevanceLanguage: 'ar',
+      safeSearch: 'moderate'
     });
     
-    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`);
-    if (!response.ok) return [];
+    const response = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?${params.toString()}`
+    );
+    
+    if (!response.ok) {
+      console.error('❌ YouTube API Error:', response.status);
+      return [];
+    }
     
     const data = await response.json();
     
-    // فلترة النتائج
-    const searchTerms = query.toLowerCase();
-    const filtered = data.items
-      ?.filter((item: any) => {
-        const title = item.snippet.title.toLowerCase();
-        const description = item.snippet.description.toLowerCase();
-        
-        // تحقق من الارتباط
-        return searchTerms.split(' ').some(term => 
-          term.length > 3 && (title.includes(term) || description.includes(term))
-        );
-      })
-      .slice(0, maxResults) // العدد المطلوب بعد الفلترة
-      .map((item: any) => ({
-        title: item.snippet.title,
-        url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-        snippet: item.snippet.description,
-        content: item.snippet.description,
-        thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url, // نستخدم high للجودة العالية
-        author: item.snippet.channelTitle,
-        relevanceScore: 0.9
-      })) || [];
+    // جلب تفاصيل إضافية (مدة، مشاهدات)
+    const videoIds = data.items?.map((item: any) => item.id.videoId).join(',');
     
-    return filtered;
+    const detailsParams = new URLSearchParams({
+      part: 'contentDetails,statistics',
+      id: videoIds,
+      key: apiKey
+    });
+    
+    const detailsResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?${detailsParams.toString()}`
+    );
+    
+    const detailsData = detailsResponse.ok ? await detailsResponse.json() : null;
+    
+    return data.items?.map((item: any, index: number) => {
+      const videoId = item.id.videoId;
+      const details = detailsData?.items?.[index];
+      
+      // تحويل المدة من ISO 8601
+      const duration = details?.contentDetails?.duration;
+      const formattedDuration = duration ? formatYouTubeDuration(duration) : null;
+      
+      // تنسيق المشاهدات
+      const views = details?.statistics?.viewCount;
+      const formattedViews = views ? formatNumber(parseInt(views)) : null;
+      
+      return {
+        title: item.snippet.title,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        snippet: item.snippet.description || 'لا يوجد وصف',
+        content: item.snippet.description || '',
+        // استخدام أعلى جودة متاحة: high > medium > default
+        thumbnail: item.snippet.thumbnails?.high?.url || 
+                   item.snippet.thumbnails?.medium?.url || 
+                   item.snippet.thumbnails?.default?.url,
+        displayLink: 'youtube.com',
+        author: item.snippet.channelTitle,
+        duration: formattedDuration,
+        views: formattedViews,
+        relevanceScore: 0.9
+      };
+    }) || [];
+    
   } catch (error) {
-    console.error('خطأ YouTube:', error);
+    console.error('❌ خطأ YouTube:', error);
     return [];
   }
+}
+
+/**
+ * تحويل مدة YouTube من ISO 8601 إلى قراءة بشرية
+ * مثال: PT1H2M10S → 1:02:10
+ */
+function formatYouTubeDuration(duration: string): string {
+  const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return duration;
+  
+  const hours = match[1] ? parseInt(match[1]) : 0;
+  const minutes = match[2] ? parseInt(match[2]) : 0;
+  const seconds = match[3] ? parseInt(match[3]) : 0;
+  
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * تنسيق الأرقام (المشاهدات)
+ * مثال: 1234567 → 1.2M
+ */
+function formatNumber(num: number): string {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  }
+  return num.toString();
 }
 
 async function searchWikipedia(query: string, maxResults: number = 3): Promise<SearchResult[]> {
@@ -614,8 +839,10 @@ async function smartMultiSourceSearch(
       wikipedia: [],
       stackoverflow: [],
       github: [],
+      results: googleResults,
       totalResults: googleResults.length,
-      searchTime: Date.now() - startTime
+      searchTime: Date.now() - startTime,
+      source: 'google'
     };
   }
   
@@ -686,8 +913,11 @@ async function smartMultiSourceSearch(
     query,
     primarySource,
     additionalSources,
+    results: primarySource.results,
+    secondaryResults: additionalSources.flatMap(s => s.results),
     totalResults: primarySource.results.length + additionalSources.reduce((sum, s) => sum + s.results.length, 0),
-    searchTime: Date.now() - startTime
+    searchTime: Date.now() - startTime,
+    source: [primarySource.source, ...additionalSources.map(s => s.source)].join(' + ')
   };
 }
 
@@ -695,18 +925,22 @@ async function smartMultiSourceSearch(
 // 🌐 Main Search Function
 // ============================================
 
-export async function searchWeb(query: string, options: SearchOptions = {}): Promise<SearchResponse | MultiSourceResponse> {
+export async function searchWeb(
+  query: string, 
+  options: SearchOptions = {}
+): Promise<SearchResponse | MultiSourceResponse> {
+  
   const { 
     maxResults = 5,
     fastMode = false,
-    smartSearch = false, // البحث الذكي متعدد المصادر
-    searchMode = 'advanced', // الوضع الافتراضي
+    smartSearch = false,
+    primaryOnly = true,
+    quickSearch = false, // 🚀 بحث سريع
+    advancedMode = false, // 🆕 وضع متقدم
     recentOnly = false,
     exactMatch = false
   } = options;
   
-  const timeout = fastMode ? DEFAULT_CONFIG.fastTimeout : (options.timeout || DEFAULT_CONFIG.timeout);
-  const retries = fastMode ? DEFAULT_CONFIG.fastRetries : (options.retries || DEFAULT_CONFIG.maxRetries);
   const startTime = Date.now();
   
   // تحقق من Cache
@@ -716,73 +950,270 @@ export async function searchWeb(query: string, options: SearchOptions = {}): Pro
     return cached;
   }
   
-  // البحث الذكي متعدد المصادر
-  if (smartSearch) {
-    const result = await smartMultiSourceSearch(query, maxResults, searchMode);
-    searchCache.set(query, options, result);
-    return result;
-  }
-  
-  // البحث العادي في Google
-  const canUseGoogle = usageTracker.canSearch();
-  
-  if (canUseGoogle) {
-    const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
-    const engineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+  // 🎯 البحث المتقدم: كل المصادر
+  if (advancedMode) {
+    console.log('🔍 البحث المتقدم - كل المصادر...');
     
-    if (apiKey && engineId) {
-      try {
-        console.log('🔍 Google Search...');
-        usageTracker.incrementUsage();
-        
-        let modifiedQuery = query;
-        if (recentOnly) modifiedQuery += ` after:${new Date().getFullYear() - 1}`;
-        if (exactMatch) modifiedQuery = `"${query}"`;
-        
-        const config: GoogleSearchConfig = {
-          apiKey,
-          searchEngineId: engineId,
-          ...DEFAULT_CONFIG,
-          numResults: maxResults
-        };
-
-        const result = await googleSearchWithRetry(modifiedQuery, config, retries);
-        searchCache.set(query, options, result);
-        return result;
-
-      } catch (error) {
-        console.warn('⚠️ Google فشل:', error);
-      }
+    const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
+    const googleCx = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    const searchPromises = [];
+    
+    // ✅ YouTube أولاً (5 فيديوهات)
+    searchPromises.push(searchYouTube(query, 5).catch(() => []));
+    
+    // Google ثانياً (8 نتائج)
+    if (googleKey && googleCx) {
+      searchPromises.push(
+        googleSearch(query, {
+          apiKey: googleKey,
+          searchEngineId: googleCx,
+          numResults: 8
+        }).then(r => r.results).catch(() => [])
+      );
     }
+    
+    // Wikipedia (2 نتائج)
+    searchPromises.push(searchWikipedia(query, 2).catch(() => []));
+    
+    // Stack Overflow (2 نتائج)
+    searchPromises.push(searchStackOverflow(query, 2).catch(() => []));
+    
+    // GitHub (2 نتائج)
+    searchPromises.push(searchGitHub(query, 2).catch(() => []));
+    
+    const allResults = await Promise.all(searchPromises);
+    const flatResults = allResults.flat();
+    
+    const response: MultiSourceResponse = {
+      results: flatResults,
+      query,
+      totalResults: flatResults.length,
+      searchTime: Date.now() - startTime,
+      source: 'multi-source-advanced'
+    };
+    
+    searchCache.set(query, options, response);
+    return response;
   }
   
-  // Fallback
-  return {
-    results: [{
-      title: `نتائج عن: ${query}`,
-      url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-      snippet: 'للمزيد من النتائج، ابحث في Google',
-      content: '',
-      relevanceScore: 0.5
-    }],
+  // 🎯 البحث العادي: YouTube + Google
+  const primarySources = detectBestSource(query, 'primary');
+  console.log('🔍 البحث الأولي من:', primarySources);
+  
+  // 🚀 البحث السريع: YouTube (3 فيديوهات) + Google (2 نتائج)
+  const primaryResults = await Promise.all(
+    primarySources.map(async (source) => {
+      if (source === 'google') {
+        const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
+        const googleCx = process.env.GOOGLE_SEARCH_ENGINE_ID;
+        if (!googleKey || !googleCx) return [];
+        
+        try {
+          usageTracker.incrementUsage();
+          const googleLimit = quickSearch ? 2 : maxResults; // 🔥 2 نتائج (أفضل نتيجتين)
+          const result = await googleSearch(query, {
+            apiKey: googleKey,
+            searchEngineId: googleCx,
+            numResults: googleLimit
+          });
+          return result.results;
+        } catch (error) {
+          console.warn('⚠️ Google فشل:', error);
+          return [];
+        }
+      }
+      
+      if (source === 'youtube') {
+        try {
+          const youtubeLimit = quickSearch ? 3 : maxResults; // 🎥 3 فيديوهات
+          return await searchYouTube(query, youtubeLimit);
+        } catch (error) {
+          console.warn('⚠️ YouTube فشل:', error);
+          return [];
+        }
+      }
+      
+      return [];
+    })
+  );
+  
+  // دمج النتائج الأولية
+  let allPrimaryResults = primaryResults.flat();
+  
+  // 🔍 البحث الثانوي (اختياري)
+  let secondaryResults: SearchResult[] = [];
+  if (!primaryOnly) {
+    const secondarySources = detectBestSource(query, 'secondary');
+    console.log('🔍 البحث الثانوي من:', secondarySources);
+    
+    const secondaryPromises = secondarySources.map(async (source) => {
+      try {
+        switch (source) {
+          case 'wikipedia':
+            return await searchWikipedia(query, Math.floor(maxResults / 2));
+          case 'stackoverflow':
+            return await searchStackOverflow(query, Math.floor(maxResults / 2));
+          case 'github':
+            return await searchGitHub(query, Math.floor(maxResults / 2));
+          default:
+            return [];
+        }
+      } catch (error) {
+        console.warn(`⚠️ ${source} فشل:`, error);
+        return [];
+      }
+    });
+    
+    const results = await Promise.all(secondaryPromises);
+    secondaryResults = results.flat();
+  }
+  
+  const response: MultiSourceResponse = {
+    results: allPrimaryResults,
+    secondaryResults: secondaryResults,
     query,
-    totalResults: 1,
+    totalResults: allPrimaryResults.length + secondaryResults.length,
     searchTime: Date.now() - startTime,
-    source: 'Fallback'
+    source: primarySources.join(' + ')
   };
+  
+  searchCache.set(query, options, response);
+  return response;
 }
 
 // ============================================
 // 🎨 Format Results
 // ============================================
 
-export function formatSearchResults(response: SearchResponse | MultiSourceResponse): string {
-  // تحقق من النوع - البحث المتقدم أو العادي
-  if ('primarySource' in response || 'google' in response) {
-    return formatMultiSourceResults(response);
+export function formatSearchResults(
+  response: SearchResponse | MultiSourceResponse,
+  aiExplanation?: string
+): string {
+  const sr = response as any;
+  
+  // رأس مصغر جداً
+  let formatted = `<div style="font-size:11px;color:#999;margin-bottom:12px">🔍 ${sr.query} • ${sr.results?.length || 0} نتيجة • ${(sr.searchTime / 1000).toFixed(2)}s</div>\n`;
+  
+  // شرح عقول AI (قبل النتائج)
+  if (aiExplanation) {
+    formatted += `<div style="background:linear-gradient(135deg,rgba(139,92,246,0.15),rgba(59,130,246,0.15));border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:16px;margin-bottom:20px">\n`;
+    formatted += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">\n`;
+    formatted += `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#a78bfa"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M17.599 6.5a3 3 0 0 0 .399-1.375"/><path d="M6.003 5.125A3 3 0 0 0 6.401 6.5"/><path d="M3.477 10.896a4 4 0 0 1 .585-.396"/><path d="M19.938 10.5a4 4 0 0 1 .585.396"/><path d="M6 18a4 4 0 0 1-1.967-.516"/><path d="M19.967 17.484A4 4 0 0 1 18 18"/></svg>\n`;
+    formatted += `<span style="font-weight:600;color:#e0e0e0;font-size:15px">شرح سريع من عقول</span>\n`;
+    formatted += `</div>\n`;
+    formatted += `<div style="color:#d0d0d0;font-size:14px;line-height:1.6">${aiExplanation}</div>\n`;
+    formatted += `</div>\n`;
+    formatted += `<div style="font-weight:600;color:#e0e0e0;font-size:16px;margin:20px 0 12px 0">شاهد الشروحات التفصيلية</div>\n`;
   }
   
-  return formatGoogleResults(response as SearchResponse);
+  if (sr.results && sr.results.length > 0) {
+    // Grid container متجاوب - يتكيف مع جميع الأجهزة
+    formatted += `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px;margin:12px 0;width:100%">\n`;
+    
+    sr.results.forEach((result: SearchResult, index: number) => {
+      const isYouTube = result.url.includes('youtube.com') || result.url.includes('youtu.be');
+      const isWikipedia = result.url.includes('wikipedia.org');
+      const isStackOverflow = result.url.includes('stackoverflow.com');
+      const isGitHub = result.url.includes('github.com');
+      
+      // تحديد الأيقونة حسب المصدر
+      let icon = '🔍';
+      if (isYouTube) icon = '🎥';
+      else if (isWikipedia) icon = '📚';
+      else if (isStackOverflow) icon = '💻';
+      else if (isGitHub) icon = '⚙️';
+      
+      // بطاقة كل نتيجة (card) - ألوان داكنة + متجاوبة
+      formatted += `<div style="background:rgba(30,30,40,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,0.3);backdrop-filter:blur(10px);width:100%;box-sizing:border-box">\n`;
+      
+      // العنوان (متجاوب)
+      formatted += `<div style="font-weight:600;font-size:clamp(13px,3vw,14px);margin-bottom:8px;color:#fff;word-wrap:break-word">${index + 1}. ${icon} ${result.title.substring(0, 60)}${result.title.length > 60 ? '...' : ''}</div>\n`;
+      
+      // صورة يوتيوب (متجاوبة)
+      if (isYouTube && result.thumbnail) {
+        formatted += `<a href="${result.url}" target="_blank" style="display:block;margin-bottom:8px"><img src="${result.thumbnail}" alt="${result.title}" style="width:100%;height:auto;aspect-ratio:16/9;border-radius:6px;object-fit:cover;transition:transform 0.2s;box-shadow:0 2px 6px rgba(0,0,0,0.4)" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'"/></a>\n`;
+      }
+      
+      // معلومات يوتيوب (متجاوبة)
+      if (isYouTube && (result.author || result.duration || result.views)) {
+        formatted += `<div style="color:#aaa;font-size:clamp(11px,2.5vw,12px);margin-bottom:6px">`;
+        if (result.author) formatted += `👤 ${result.author}`;
+        if (result.duration) formatted += ` • ⏱️ ${result.duration}`;
+        if (result.views) formatted += ` • 👁️ ${result.views}`;
+        formatted += `</div>\n`;
+      }
+      
+      // الرابط (متجاوب)
+      formatted += `<div style="font-size:clamp(10px,2vw,11px);color:#888;word-break:break-all;overflow-wrap:break-word">🔗 <code style="font-size:clamp(9px,1.8vw,10px);color:#999;background:rgba(0,0,0,0.3);padding:2px 4px;border-radius:3px;word-break:break-all">${result.url}</code></div>\n`;
+      
+      formatted += `</div>\n`; // نهاية البطاقة
+    });
+    
+    formatted += `</div>\n`; // نهاية Grid
+  }
+  
+  // 🔍 زر البحث المتقدم (مضغوط)
+  if (sr.results && sr.results.length <= 2) {
+    formatted += `---\n`;
+    formatted += `💡 **تريد المزيد؟** [🔍 بحث متقدم](#advanced-search)\n`;
+  }
+  
+  return formatted;
+}
+
+/**
+ * إنشاء كارت منفصل لكل نتيجة
+ */
+function createResultCard(result: SearchResult, index: number): string {
+  const isYouTube = result.url.includes('youtube.com') || result.url.includes('youtu.be');
+  const isWikipedia = result.url.includes('wikipedia.org');
+  const isStackOverflow = result.url.includes('stackoverflow.com');
+  const isGitHub = result.url.includes('github.com');
+  
+  // تحديد الأيقونة حسب المصدر
+  let icon = '🔍'; // Google افتراضي
+  if (isYouTube) icon = '🎥';
+  else if (isWikipedia) icon = '📚';
+  else if (isStackOverflow) icon = '💻';
+  else if (isGitHub) icon = '⚙️';
+  
+  let card = '';
+  
+  // 📌 رقم وأيقونة
+  card += `## ${index} ${icon}\n\n`;
+  
+  // 📝 العنوان
+  card += `### ${result.title}\n\n`;
+  
+  // �️ صورة مصغرة (لليوتيوب)
+  if (isYouTube && result.thumbnail) {
+    card += `![${result.title}](${result.thumbnail})\n\n`;
+  }
+  
+  // 🌐 المصدر
+  if (result.displayLink) {
+    card += `📍 **المصدر:** ${result.displayLink}\n\n`;
+  }
+  
+  // 📄 الوصف
+  if (result.snippet) {
+    card += `> ${result.snippet}\n\n`;
+  }
+  
+  // 🎬 معلومات إضافية (يوتيوب)
+  if (isYouTube) {
+    if (result.author) card += `👤 **القناة:** ${result.author}\n`;
+    if (result.duration) card += `⏱️ **المدة:** ${result.duration}\n`;
+    if (result.views) card += `👁️ **المشاهدات:** ${result.views}\n`;
+    card += `\n`;
+  }
+  
+  // 🔗 زر الفتح
+  card += `[🔗 **${isYouTube ? 'شاهد الفيديو' : 'اقرأ المزيد'}**](${result.url})\n\n`;
+  card += `---\n`;
+  
+  return card;
 }
 
 function formatGoogleResults(response: SearchResponse): string {

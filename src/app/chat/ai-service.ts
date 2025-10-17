@@ -4,7 +4,8 @@
 // ============================================
 
 import { Message } from './types';
-import { needsSearch, searchWeb } from './search';
+import { needsSearch } from './search';
+import { searchWeb } from './web-search';
 import { 
   selectOptimalProvider, 
   getAlternativeProvider, 
@@ -161,9 +162,8 @@ export const sendWithAutoSearch = async (
       
       try {
         const searchResults = await searchWeb(userMessage, { 
-          maxResults: 3, 
-          useAI: true,
-          retries: 1
+          maxResults: 3,
+          quickSearch: true // بحث سريع
         });
         console.log('🔍 Enhanced search results received:', searchResults);
         

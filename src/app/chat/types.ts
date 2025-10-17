@@ -28,6 +28,7 @@ export interface Message {
     views: string;
     duration?: string;
   }>;
+  advancedSearchQuery?: string; // 🆕 للبحث المتقدم
 }
 
 export interface Conversation {
