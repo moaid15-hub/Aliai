@@ -6,6 +6,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { selectOptimalProvider, selectModelByMessageCount } from '../../chat/ai-selector';
 import { getProviderName, formatMessageWithSignature, determineQuestionType } from '../../chat/brand-config';
 import { getSystemPrompt } from '../../system-prompt';
+import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
 // 🔒 نظام الاشتراكات
 import { subscriptionChecker } from '../../../lib/subscription/checker';
@@ -129,46 +131,96 @@ function generateIntelligentResponse(userMessage: string): string {
 }
 
 async function sendToRealProvider(messages: any[], provider: string) {
-  const EXTERNAL_API_URL = 'https://m6a2nksc08.execute-api.eu-west-1.amazonaws.com/chat';
-
   try {
-    console.log(`🚀 Connecting to ${provider}...`);
+    console.log(`🚀 Connecting to ${provider} directly...`);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const modelName = getModelName(provider, messages.length);
+    let responseText = '';
 
-    const response = await fetch(EXTERNAL_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, provider }),
-      signal: controller.signal
-    });
+    switch (provider.toLowerCase()) {
+      case 'openai': {
+        const openai = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY
+        });
 
-    clearTimeout(timeoutId);
+        const completion = await openai.chat.completions.create({
+          model: modelName,
+          messages: messages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
+          })),
+          temperature: 0.7,
+          max_tokens: 2000
+        });
 
-    if (!response.ok) {
-      throw new Error(`Provider API error: ${response.status}`);
+        responseText = completion.choices[0]?.message?.content || '';
+        break;
+      }
+
+      case 'claude': {
+        const anthropic = new Anthropic({
+          apiKey: process.env.ANTHROPIC_API_KEY
+        });
+
+        const systemMessages = messages.filter((m: any) => m.role === 'system');
+        const userMessages = messages.filter((m: any) => m.role !== 'system');
+
+        const response = await anthropic.messages.create({
+          model: modelName,
+          max_tokens: 2000,
+          system: systemMessages.map((m: any) => m.content).join('\n'),
+          messages: userMessages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
+          }))
+        });
+
+        responseText = response.content[0]?.type === 'text' ? response.content[0].text : '';
+        break;
+      }
+
+      case 'deepseek': {
+        const deepseek = new OpenAI({
+          apiKey: process.env.DEEPSEEK_API_KEY,
+          baseURL: 'https://api.deepseek.com'
+        });
+
+        const completion = await deepseek.chat.completions.create({
+          model: 'deepseek-chat',
+          messages: messages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'assistant' : 'user',
+            content: m.content
+          })),
+          temperature: 0.7,
+          max_tokens: 2000
+        });
+
+        responseText = completion.choices[0]?.message?.content || '';
+        break;
+      }
+
+      default:
+        throw new Error(`Unknown provider: ${provider}`);
     }
 
-    const data = await response.json();
-
-    if (data.success && data.message) {
-      console.log(`✅ Success from ${provider}`);
-      const lastMessage = messages[messages.length - 1]?.content || '';
-      const questionType = determineQuestionType(lastMessage, provider);
-
-      return {
-        success: true,
-        message: formatMessageWithSignature(data.message, questionType),
-        model: data.model || getModelName(provider, messages.length),
-        selectedProvider: provider,
-        isExternalAPI: true
-      };
+    if (!responseText) {
+      throw new Error('Empty response from provider');
     }
 
-    throw new Error(data.error || 'Invalid response');
+    console.log(`✅ Success from ${provider}`);
+    const lastMessage = messages[messages.length - 1]?.content || '';
+    const questionType = determineQuestionType(lastMessage, provider);
+
+    return {
+      success: true,
+      message: formatMessageWithSignature(responseText, questionType),
+      model: modelName,
+      selectedProvider: provider,
+      isDirectAPI: true
+    };
 
   } catch (error) {
+    console.error(`❌ ${provider} error:`, error);
     console.warn(`⚠️ ${provider} unavailable, using fallback`);
     return {
       success: true,
