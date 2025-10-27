@@ -390,31 +390,31 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // 🔒 فحص صلاحيات الاشتراك
+    // 🔒 فحص صلاحيات الاشتراك - معطل مؤقتاً
     // ============================================
 
-    console.log('🔒 فحص صلاحيات الاشتراك...');
-    const subscriptionCheck = await checkSubscriptionPermissions(userId, userInput);
+    // console.log('🔒 فحص صلاحيات الاشتراك...');
+    // const subscriptionCheck = await checkSubscriptionPermissions(userId, userInput);
 
-    if (!subscriptionCheck.allowed) {
-      console.log('❌ تم رفض الطلب: ' + subscriptionCheck.error);
+    // if (!subscriptionCheck.allowed) {
+    //   console.log('❌ تم رفض الطلب: ' + subscriptionCheck.error);
 
-      return NextResponse.json({
-        success: false,
-        error: subscriptionCheck.error,
-        errorType: 'subscription_limit',
-        upgradeRequired: subscriptionCheck.upgradeRequired,
-        currentPlan: subscriptionCheck.currentPlan,
-        suggestedPlan: subscriptionCheck.suggestedPlan,
-        subscriptionInfo: subscriptionCheck.subscription ? {
-          planId: subscriptionCheck.subscription.planId,
-          usage: subscriptionCheck.subscription.usage,
-          limits: subscriptionChecker.getCurrentLimits(subscriptionCheck.subscription)
-        } : null
-      }, { status: 402 });
-    }
+    //   return NextResponse.json({
+    //     success: false,
+    //     error: subscriptionCheck.error,
+    //     errorType: 'subscription_limit',
+    //     upgradeRequired: subscriptionCheck.upgradeRequired,
+    //     currentPlan: subscriptionCheck.currentPlan,
+    //     suggestedPlan: subscriptionCheck.suggestedPlan,
+    //     subscriptionInfo: subscriptionCheck.subscription ? {
+    //       planId: subscriptionCheck.subscription.planId,
+    //       usage: subscriptionCheck.subscription.usage,
+    //       limits: subscriptionChecker.getCurrentLimits(subscriptionCheck.subscription)
+    //     } : null
+    //   }, { status: 402 });
+    // }
 
-    console.log('✅ صلاحيات الاشتراك مؤكدة');
+    console.log('✅ نظام الاشتراكات معطل - الوصول مفتوح');
 
     // ============================================
     // 1️⃣ تصنيف السؤال بذكاء
