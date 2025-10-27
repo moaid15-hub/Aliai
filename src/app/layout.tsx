@@ -6,6 +6,10 @@ import UnderConstructionBanner from '@/components/UnderConstructionBanner';
 
 const inter = Inter({ subsets: ["latin"] });
 
+// Force dynamic rendering to avoid build-time errors with client components
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+
 export const metadata: Metadata = {
   title: "Oqool AI - منصة الذكاء الاصطناعي",
   description: "منصة عقول للذكاء الاصطناعي - احصل على إجابات ذكية ومساعدة شخصية متقدمة",

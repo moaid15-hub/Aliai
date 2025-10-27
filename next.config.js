@@ -12,8 +12,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Use standalone output for better compatibility
-  output: 'standalone',
+  // Disable static page generation - force all pages to be dynamic
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
+  },
 }
 
 module.exports = nextConfig
