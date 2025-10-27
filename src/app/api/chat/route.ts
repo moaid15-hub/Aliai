@@ -434,8 +434,8 @@ export async function POST(request: NextRequest) {
     // ============================================
 
     if (disableSearch) {
-      console.log('⚠️ البحث معطّل - الانتقال المباشر إلى AI Chat المحلي');
-      const result = await sendToLocalAI(messages, selectedProvider);
+      console.log('⚠️ البحث معطّل - الانتقال المباشر إلى Real API');
+      const result = await sendToRealProvider(messages, selectedProvider);
 
       return NextResponse.json({
         ...result,
@@ -703,9 +703,9 @@ export async function POST(request: NextRequest) {
     // 4️⃣ المسار العادي - AI Chat (محلي أولاً)
     // ============================================
 
-    console.log('💬 مسار AI Chat عادي - استخدام النظام المحلي');
+    console.log('💬 مسار AI Chat عادي - استخدام Real API');
 
-    const result = await sendToLocalAI(messages, selectedProvider);
+    const result = await sendToRealProvider(messages, selectedProvider);
 
     return NextResponse.json({
       ...result,
