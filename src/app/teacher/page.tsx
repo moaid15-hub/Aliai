@@ -30,9 +30,10 @@ export default function TeacherPage() {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
+      id: `user-${Date.now()}`,
       role: 'user',
       content: input.trim(),
-      timestamp: Date.now(),
+      timestamp: new Date(),
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -59,9 +60,10 @@ export default function TeacherPage() {
 
       if (data.success) {
         const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
           role: 'assistant',
           content: data.message,
-          timestamp: Date.now(),
+          timestamp: new Date(),
           sources: data.sources,
         };
         setMessages(prev => [...prev, aiMessage]);
