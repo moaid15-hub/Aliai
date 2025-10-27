@@ -186,15 +186,15 @@ body::before {
 
 .greeting-text {
     margin-top: 20px;
-    font-size: 24px;
+    font-size: 52px;
     font-weight: 600;
-    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%);
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #60a5fa 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     animation: fadeInUp 1s ease-out 0.8s forwards;
     opacity: 0;
-    filter: drop-shadow(0 2px 8px rgba(251, 191, 36, 0.3));
+    filter: drop-shadow(0 2px 8px rgba(96, 165, 250, 0.3));
 }
 
 @keyframes fadeInUp {
@@ -223,9 +223,10 @@ body::before {
     font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     cursor: pointer;
     transition: all 0.4s ease;
-    filter: drop-shadow(3px 3px 0 rgba(251, 191, 36, 0.25))
-            drop-shadow(6px 6px 0 rgba(251, 191, 36, 0.15))
-            drop-shadow(2px 2px 10px rgba(59, 130, 246, 0.5));
+    filter: drop-shadow(2px 2px 0 rgba(30, 58, 138, 0.8))
+            drop-shadow(4px 4px 0 rgba(59, 130, 246, 0.5))
+            drop-shadow(6px 6px 0 rgba(147, 197, 253, 0.3))
+            drop-shadow(8px 8px 0 rgba(224, 242, 254, 0.15));
 }
 
 @keyframes logoGradient {
@@ -901,11 +902,9 @@ body::before {
         height: 18px;
     }
 
-    /* Quick Actions */
+    /* Quick Actions - مخفية في الموبايل */
     .quick-actions {
-        grid-template-columns: 1fr;
-        gap: 8px;
-        max-width: 100%;
+        display: none !important;
     }
 
     .quick-btn {
@@ -1113,4 +1112,206 @@ body::before {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* ============================================ */
+/* ☀️ الوضع النهاري والليلي */
+/* ============================================ */
+
+/* الوضع الليلي (Dark Mode) - الوضع الافتراضي الأصلي */
+.dark-mode {
+    /* الوضع الليلي هو الأصلي - لا حاجة لتغيير */
+}
+
+/* زر الإرسال في الوضع الليلي - أصفر واضح */
+.dark-mode .send-button {
+    background-color: #fbbf24 !important;
+}
+
+.dark-mode .send-button:hover {
+    background-color: #f59e0b !important;
+}
+
+/* الوضع النهاري (Light Mode) - الوضع الفاتح الجديد */
+.light-mode {
+    background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 25%, #ffffff 50%, #f0f4f8 75%, #e3e8ef 100%) !important;
+    background-size: 400% 400% !important;
+    animation: gradientShift 15s ease infinite !important;
+}
+
+.light-mode::before {
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.06) 0%, transparent 50%) !important;
+}
+
+/* تطبيق الوضع النهاري على العناصر */
+.light-mode .sidebar {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-right: 1px solid rgba(59, 130, 246, 0.2) !important;
+    border-left: 1px solid rgba(251, 191, 36, 0.2) !important;
+    box-shadow: -5px 0 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+.light-mode .sidebar-icon {
+    background: rgba(240, 244, 248, 0.5) !important;
+    color: #334155 !important;
+}
+
+.light-mode .sidebar-icon:hover {
+    color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.15) !important;
+}
+
+.light-mode .sidebar-icon.active {
+    color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.25) !important;
+}
+
+.light-mode .search-box {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+}
+
+.light-mode .search-box:hover {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.15),
+                0 0 0 1px rgba(59, 130, 246, 0.3) !important;
+}
+
+.light-mode .search-box:focus-within {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 12px 40px rgba(59, 130, 246, 0.2),
+                0 0 0 2px rgba(59, 130, 246, 0.4) !important;
+}
+
+.light-mode .search-input {
+    color: #1e293b !important;
+}
+
+.light-mode .search-input::placeholder {
+    color: #94a3b8 !important;
+}
+
+.light-mode .search-icons-inside .search-icon {
+    background: #e2e8f0 !important;
+}
+
+.light-mode .search-icons-inside .search-icon:hover {
+    background: #3b82f6 !important;
+    color: #fff !important;
+}
+
+.light-mode .message-content {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-color: rgba(226, 232, 240, 0.8) !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+}
+
+.light-mode .message-content *,
+.light-mode .message-content p,
+.light-mode .message-content div,
+.light-mode .message-content span,
+.light-mode .message-content pre,
+.light-mode .message-content code {
+    color: #000000 !important;
+}
+
+.light-mode .message.user .message-content {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1)) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.light-mode .message.ai .message-content {
+    background: rgba(248, 250, 252, 0.95) !important;
+    border-color: rgba(203, 213, 225, 0.6) !important;
+}
+
+.light-mode .message-avatar {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.light-mode .message-time {
+    color: #64748b !important;
+}
+
+.light-mode .quick-btn {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border-color: rgba(203, 213, 225, 0.6) !important;
+    color: #475569 !important;
+}
+
+.light-mode .quick-btn:hover {
+    border-color: #3b82f6 !important;
+    color: #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.light-mode .typing-dots {
+    background: rgba(255, 255, 255, 0.9) !important;
+    border-color: #e2e8f0 !important;
+}
+
+.light-mode .typing-dot {
+    background: #3b82f6 !important;
+}
+
+.light-mode .logo-text {
+    filter: drop-shadow(2px 2px 0 rgba(30, 58, 138, 0.8))
+            drop-shadow(4px 4px 0 rgba(59, 130, 246, 0.5))
+            drop-shadow(6px 6px 0 rgba(147, 197, 253, 0.3))
+            drop-shadow(8px 8px 0 rgba(224, 242, 254, 0.15)) !important;
+}
+
+.light-mode .greeting-text {
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    background-clip: text !important;
+}
+
+.light-mode .top-icon {
+    background-color: #f1f5f9 !important;
+}
+
+.light-mode .top-icon:hover {
+    background-color: #e2e8f0 !important;
+}
+
+.light-mode .bottom-info a {
+    color: #64748b !important;
+}
+
+.light-mode .bottom-info a:hover {
+    color: #3b82f6 !important;
+}
+
+/* أزرار التفاعل في الوضع النهاري */
+.light-mode .message-content button {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #64748b !important;
+}
+
+.light-mode .message-content button:hover {
+    background: rgba(59, 130, 246, 0.1) !important;
+    border-color: #3b82f6 !important;
+    color: #3b82f6 !important;
+}
+
+/* المواضيع ذات الصلة في الوضع النهاري */
+.light-mode .message-content > div[style*="rgba(94, 180, 235"] {
+    background: rgba(59, 130, 246, 0.05) !important;
+    border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* زر الإرسال في الوضع النهاري - أزرق واضح */
+.light-mode .send-button {
+    background-color: #3b82f6 !important;
+}
+
+.light-mode .send-button:hover {
+    background-color: #2563eb !important;
 }

@@ -46,6 +46,8 @@ export default function ChatPage() {
   const [visibleResultsCount, setVisibleResultsCount] = useState<Record<string, number>>({});
   const [expandedMessages, setExpandedMessages] = useState<Record<string, boolean>>({});
   const [greeting, setGreeting] = useState('');
+  const [isSearchEnabled, setIsSearchEnabled] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(true); // الوضع الليلي هو الافتراضي
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const attachmentsInputRef = useRef<HTMLInputElement>(null);
   const imagesInputRef = useRef<HTMLInputElement>(null);
@@ -58,13 +60,13 @@ export default function ChatPage() {
       let greetingText = '';
 
       if (hour >= 5 && hour < 12) {
-        greetingText = 'صباح الخير ☀️';
+        greetingText = 'صبحكم الله بالخير';
       } else if (hour >= 12 && hour < 17) {
-        greetingText = 'مساء الخير 🌤️';
+        greetingText = 'مساء الخير';
       } else if (hour >= 17 && hour < 21) {
-        greetingText = 'مساء الخير 🌆';
+        greetingText = 'مساء الخير';
       } else {
-        greetingText = 'مساء الخير 🌙';
+        greetingText = 'مساء الخير';
       }
 
       setGreeting(greetingText);
@@ -168,7 +170,7 @@ export default function ChatPage() {
       }));
 
       // إرسال للذكاء الاصطناعي الحقيقي
-      const result = await sendToAIIntelligent(aiMessages, message);
+      const result = await sendToAIIntelligent(aiMessages, message, isSearchEnabled);
 
       // إذا احتوت النتيجة على بيانات بحث، حضّرها
       const resultData = result as any;
@@ -596,6 +598,65 @@ export default function ChatPage() {
             </svg>
           </div>
         ))}
+
+        <div className="sidebar-divider"></div>
+
+        {/* زر تعطيل/تفعيل البحث */}
+        <div
+          className="sidebar-icon"
+          onClick={() => {
+            setIsSearchEnabled(!isSearchEnabled);
+            showToast(
+              isSearchEnabled ? '🚫 تم تعطيل البحث - الذكاء الاصطناعي فقط' : '🔍 تم تفعيل البحث على الويب',
+              isSearchEnabled ? 'info' : 'success'
+            );
+          }}
+          title={isSearchEnabled ? "تعطيل البحث (ذكاء اصطناعي فقط)" : "تفعيل البحث على الويب"}
+          style={{
+            cursor: 'pointer',
+            backgroundColor: isSearchEnabled ? '#10b981' : '#ef4444',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+            {isSearchEnabled ? (
+              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="white" strokeWidth="2" fill="none"/>
+            ) : (
+              <>
+                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="white" strokeWidth="2" fill="none"/>
+                <line x1="4" y1="4" x2="20" y2="20" stroke="white" strokeWidth="2"/>
+              </>
+            )}
+          </svg>
+        </div>
+
+        {/* زر الوضع النهاري/الليلي */}
+        <div
+          className="sidebar-icon"
+          onClick={() => {
+            setIsDarkMode(!isDarkMode);
+            showToast(
+              !isDarkMode ? '🌙 تم التبديل للوضع الليلي' : '☀️ تم التبديل للوضع النهاري',
+              'success'
+            );
+          }}
+          title={isDarkMode ? "التبديل للوضع النهاري ☀️" : "التبديل للوضع الليلي 🌙"}
+          style={{
+            cursor: 'pointer',
+            backgroundColor: isDarkMode ? '#1e293b' : '#f59e0b',
+            transition: 'all 0.3s ease'
+          }}
+        >
+          <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+            {isDarkMode ? (
+              // أيقونة الشمس (في الوضع الليلي - اضغط للتبديل للنهاري)
+              <path d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            ) : (
+              // أيقونة القمر (في الوضع النهاري - اضغط للتبديل لليلي)
+              <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            )}
+          </svg>
+        </div>
       </div>
 
       {/* Top Icons */}
@@ -608,7 +669,7 @@ export default function ChatPage() {
       </div>
 
       {/* Main Content */}
-      <div className={`main-content ${isChatMode ? 'chat-mode' : ''}`}>
+      <div className={`main-content ${isChatMode ? 'chat-mode' : ''} ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
         <div className={`logo-container ${isChatMode ? 'hidden' : ''}`}>
           <div className="logo-text" style={{ direction: 'ltr' }}>
             {'OqoolAI'.split('').map((char, index) => (
@@ -776,7 +837,7 @@ export default function ChatPage() {
                     <div>
                       <div style={{
                         marginTop: msg.searchResults ? '8px' : '0',
-                        color: '#e2e8f0',
+                        color: isDarkMode ? '#e2e8f0' : '#000000',
                         fontSize: '15px',
                         lineHeight: '2.2',
                         whiteSpace: 'pre-wrap'

@@ -23,7 +23,8 @@ initializeAISelector();
 // 🧠 إرسال ذكي مع اختيار تلقائي للمزود
 export const sendToAIIntelligent = async (
   messages: Array<{ role: string; content: string }>,
-  userMessage: string
+  userMessage: string,
+  enableSearch: boolean = true
 ): Promise<{
   success: boolean;
   message: string;
@@ -57,13 +58,14 @@ export const sendToAIIntelligent = async (
   const updatedMessages = [...messages, { role: 'user', content: userMessage }];
   
   // محاولة الإرسال مع النظام الاحتياطي
-  return await sendWithIntelligentFallback(updatedMessages, optimalProvider);
+  return await sendWithIntelligentFallback(updatedMessages, optimalProvider, enableSearch);
 };
 
 // 🔄 إرسال مع نظام احتياطي ذكي
 export const sendWithIntelligentFallback = async (
   messages: Array<{ role: string; content: string }>,
-  selectedProvider: string
+  selectedProvider: string,
+  enableSearch: boolean = true
 ): Promise<{
   success: boolean;
   message: string;
@@ -88,8 +90,8 @@ export const sendWithIntelligentFallback = async (
     
     try {
       console.log(`🤖 Trying provider: ${provider} (attempt ${i + 1}/${providers.length})`);
-      
-      const result = await sendToAI(messages, provider);
+
+      const result = await sendToAI(messages, provider, enableSearch);
       const responseTime = Date.now() - startTime;
       
       if (result.success) {
@@ -130,7 +132,8 @@ export const sendWithIntelligentFallback = async (
 // إرسال رسالة للذكاء الاصطناعي (الدالة الأساسية)
 export const sendToAI = async (
   messages: Array<{ role: string; content: string }>,
-  provider: string
+  provider: string,
+  enableSearch: boolean = true
 ): Promise<{
   success: boolean;
   message: string;
@@ -145,7 +148,7 @@ export const sendToAI = async (
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, provider })
+      body: JSON.stringify({ messages, provider, disableSearch: !enableSearch })
     });
 
     if (!response.ok) {

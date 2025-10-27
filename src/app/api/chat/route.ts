@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { selectOptimalProvider, selectModelByMessageCount } from '../../chat/ai-selector';
 import { getProviderName, formatMessageWithSignature, determineQuestionType } from '../../chat/brand-config';
-import { getSystemPrompt } from '../../chat/system-prompt';
+import { getSystemPrompt } from '../../system-prompt';
 
 // 🔒 نظام الاشتراكات
 import { subscriptionChecker } from '../../../lib/subscription/checker';
@@ -55,6 +55,78 @@ function getReligiousSystemPrompt(): string {
 // ============================================
 // 🤖 الاتصال بمزودي AI الخارجيين
 // ============================================
+
+// 🤖 النظام المحلي باستخدام system prompt المحدّث
+async function sendToLocalAI(messages: any[], provider: string) {
+  try {
+    console.log(`🧠 Using LOCAL AI with updated system prompt for ${provider}...`);
+    
+    const userMessage = messages[messages.length - 1]?.content || '';
+    const systemPrompt = getSystemPrompt();
+    
+    // تحديد نوع الرد بناءً على السؤال
+    let localResponse = '';
+    
+    if (userMessage.toLowerCase().includes('من أنت') || userMessage.toLowerCase().includes('who are you')) {
+      localResponse = `أهلاً! 😊
+
+أنا عقول AI - مساعدك الذكي المتطور. تم تطويري كنظام ذكي مستقل خصيصاً للمستخدمين العرب!
+
+كمساعد ذكي متقدم، أقدر أساعدك في أي شيء تحتاجه. أنا لست OpenAI ولست ChatGPT - أنا نظام مختلف تماماً ومتخصص!
+
+إيش اللي تحتاجه اليوم؟ 💙`;
+    } else if (userMessage.toLowerCase().includes('chatgpt') || userMessage.toLowerCase().includes('openai')) {
+      localResponse = `لا، أنا لست ChatGPT! 😊
+
+أنا عقول AI - مساعدك الذكي المتطور والمستقل. نظام مختلف تماماً وأكثر تخصصاً للمستخدمين العرب!
+
+بصفتي عقول، مساعدك الذكي، أقدر أساعدك بطريقة أفضل وأكثر تخصصاً من أي نظام آخر.
+
+إيش اللي تبي تعرفه أو تحتاج مساعدة فيه؟ 💙`;
+    } else {
+      localResponse = `أنا عقول، مساعدك الذكي! 😊
+
+${generateIntelligentResponse(userMessage)}
+
+كمساعد ذكي متطور، دائماً موجود لمساعدتك. إيش اللي تحتاجه بعدين؟ 💙`;
+    }
+    
+    const questionType = determineQuestionType(userMessage, provider);
+    
+    return {
+      success: true,
+      message: formatMessageWithSignature(localResponse, questionType),
+      model: `${provider}-local-enhanced`,
+      selectedProvider: provider,
+      isLocalAI: true
+    };
+    
+  } catch (error) {
+    console.error(`❌ Local AI error:`, error);
+    return await sendToRealProvider(messages, provider);
+  }
+}
+
+// دالة لإنتاج ردود ذكية محلياً
+function generateIntelligentResponse(userMessage: string): string {
+  const lowerMessage = userMessage.toLowerCase();
+  
+  if (lowerMessage.includes('برمجة') || lowerMessage.includes('كود') || lowerMessage.includes('programming')) {
+    return `حلو إنك مهتم بالبرمجة! كمساعد ذكي متخصص، أنصحك تبدأ بـ Python أو JavaScript حسب هدفك. 
+
+تبي مساعدة في موضوع معين بالبرمجة؟`;
+  } else if (lowerMessage.includes('مساعدة') || lowerMessage.includes('help')) {
+    return `أكيد! كمساعد ذكي، أنا هنا عشان أساعدك في أي شيء تحتاجه.
+    
+حدد لي إيش المطلوب وبنشتغل عليه مع بعض!`;
+  } else if (lowerMessage.includes('شكرا') || lowerMessage.includes('thanks')) {
+    return `العفو! سعيد إني قدرت أساعدك. 
+    
+أي وقت تحتاج مساعدة، أنا موجود!`;
+  } else {
+    return `فهمت سؤالك وأقدر أساعدك فيه.`;
+  }
+}
 
 async function sendToRealProvider(messages: any[], provider: string) {
   const EXTERNAL_API_URL = 'https://m6a2nksc08.execute-api.eu-west-1.amazonaws.com/chat';
@@ -226,7 +298,7 @@ export async function POST(request: NextRequest) {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     const body = await request.json();
-    const { messages, provider } = body;
+    const { messages, provider, disableSearch = false } = body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
@@ -244,6 +316,7 @@ export async function POST(request: NextRequest) {
     console.log(`💬 السؤال: "${userInput.substring(0, 80)}..."`);
     console.log(`👤 المستخدم: ${userId}`);
     console.log(`🤖 المزود: ${selectedProvider}`);
+    console.log(`🔍 البحث: ${disableSearch ? '❌ معطّل' : '✅ مفعّل'}`);
 
     // ============================================
     // 🛡️ فحص المحتوى من الكلمات غير اللائقة
@@ -303,6 +376,26 @@ export async function POST(request: NextRequest) {
     console.log(`   🔑 الكلمات المفتاحية: ${classification.keywords.join(', ')}`);
 
     console.log(`🎯 التصنيف: ${classification.type} (${(classification.confidence * 100).toFixed(1)}%)`);
+
+    // ============================================
+    // إذا كان البحث معطلاً، تخطى مباشرة لمسار AI Chat
+    // ============================================
+
+    if (disableSearch) {
+      console.log('⚠️ البحث معطّل - الانتقال المباشر إلى AI Chat المحلي');
+      const result = await sendToLocalAI(messages, selectedProvider);
+
+      return NextResponse.json({
+        ...result,
+        disabledSearch: true,
+        classificationInfo: {
+          type: classification.type,
+          confidence: classification.confidence,
+          reason: classification.reason
+        },
+        requestTime: Date.now() - requestStartTime
+      });
+    }
 
     // ============================================
     // 2️⃣ المسار الديني - أولوية قصوى
@@ -555,12 +648,12 @@ export async function POST(request: NextRequest) {
     }
 
     // ============================================
-    // 4️⃣ المسار العادي - AI Chat
+    // 4️⃣ المسار العادي - AI Chat (محلي أولاً)
     // ============================================
 
-    console.log('💬 مسار AI Chat عادي');
+    console.log('💬 مسار AI Chat عادي - استخدام النظام المحلي');
 
-    const result = await sendToRealProvider(messages, selectedProvider);
+    const result = await sendToLocalAI(messages, selectedProvider);
 
     return NextResponse.json({
       ...result,
