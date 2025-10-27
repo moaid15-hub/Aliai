@@ -1,0 +1,632 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrollbar حديث */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3b82f6 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6, #1e40af);
+  border-radius: 10px;
+  transition: all 0.3s;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+  width: 10px;
+}
+
+/* Responsive scrollbar for mobile */
+@media (max-width: 640px) {
+  *::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Code block grid pattern */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Enhanced code highlighting animations */
+@keyframes codeGlow {
+  0% {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+  50% {
+    text-shadow: 0 1px 4px rgba(59, 130, 246, 0.3), 0 1px 2px rgba(0,0,0,0.5);
+  }
+  100% {
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+}
+
+.code-highlight-animate {
+  animation: codeGlow 2s ease-in-out infinite;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  overflow-x: hidden;
+  width: 100%;
+  /* مسافة للشريط العلوي "تحت الإنشاء" */
+  padding-top: 34px;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-top: 32px;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding-top: 30px;
+  }
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Improve mobile input experience */
+@media (max-width: 640px) {
+  textarea {
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+}
+
+/* 🎨 بطاقات نتائج البحث */
+.search-result-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 16px 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.search-result-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+/* العنوان */
+.result-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.result-number {
+  font-size: 24px;
+  font-weight: bold;
+  color: #fff;
+  min-width: 40px;
+}
+
+.result-title {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+/* المحتوى */
+.result-content {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.result-thumbnail {
+  position: relative;
+  flex-shrink: 0;
+  width: 180px;
+  height: 120px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.result-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* تأثير Play لليوتيوب */
+.youtube-thumb {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.youtube-thumb:hover {
+  transform: scale(1.05);
+}
+
+.play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 0, 0, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* الوصف */
+.result-description {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+}
+
+.result-description p {
+  margin: 0;
+}
+
+/* الرابط */
+.result-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.result-link:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateX(-4px);
+}
+
+/* وضع الموبايل */
+@media (max-width: 768px) {
+  .result-content {
+    flex-direction: column;
+  }
+  
+  .result-thumbnail {
+    width: 100%;
+    height: 180px;
+  }
+}
+
+/* 🎴 كروت البحث المنفصلة */
+.message-content h2 {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px 12px 0 0;
+  margin: 24px 0 0 0;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.message-content h3 {
+  background: rgba(102, 126, 234, 0.1);
+  padding: 16px;
+  border-radius: 0;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  border-right: 4px solid #667eea;
+}
+
+.message-content blockquote {
+  background: rgba(0, 0, 0, 0.02);
+  border-right: 3px solid #667eea;
+  padding: 16px;
+  margin: 0;
+  font-style: normal;
+  color: #555;
+  line-height: 1.6;
+}
+
+.message-content img {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  border-radius: 12px;
+  margin: 16px 0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.message-content img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* 🔗 أزرار الروابط */
+.message-content a[href^="http"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white !important;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 600;
+  margin: 16px 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.message-content a[href^="http"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* 📍 معلومات المصدر */
+.message-content p strong {
+  color: #667eea;
+  font-weight: 600;
+}
+
+/* 🎬 معلومات الفيديو */
+.message-content h3 + p {
+  padding: 12px 16px;
+  background: rgba(102, 126, 234, 0.05);
+  margin: 0;
+  border-radius: 0 0 12px 12px;
+  margin-bottom: 8px;
+}
+
+/* فواصل النتائج */
+.message-content hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(102, 126, 234, 0.3),
+    transparent
+  );
+  margin: 32px 0;
+}
+
+/* 💬 الاقتراحات */
+.message-content ul {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  padding: 20px 40px;
+  border-radius: 12px;
+  border-right: 4px solid #667eea;
+  margin: 24px 0;
+}
+
+.message-content ul li {
+  color: #555;
+  margin: 8px 0;
+  font-weight: 500;
+}
+
+/* 🎴 بطاقات النتائج الصغيرة */
+.message-content > p {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 12px 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.message-content > p:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
+/* 📍 المصدر */
+.message-content > p strong {
+  display: block;
+  color: #667eea;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+/* 📝 الوصف */
+.message-content > p > blockquote {
+  background: transparent;
+  border: none;
+  padding: 8px 0;
+  margin: 8px 0;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+}
+
+/* 🔗 الرابط */
+.message-content > p a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white !important;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+}
+
+.message-content > p a:hover {
+  transform: translateX(-4px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 🎥 صورة مصغرة يوتيوب - مصغرة */
+.message-content > p img {
+  width: 100%;
+  max-width: 120px; /* بدلاً من 200px */
+  height: auto;
+  border-radius: 8px;
+  margin: 8px 0;
+  float: left;
+  margin-left: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.message-content > p img:hover {
+  transform: scale(1.05);
+}
+
+/* 🎬 تأثير Play - أصغر */
+.message-content > p img[src*="youtube"] {
+  position: relative;
+}
+
+.message-content > p img[src*="youtube"]::after {
+  content: '▶';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px; /* بدلاً من 48px */
+  height: 36px;
+  background: rgba(255, 0, 0, 0.9);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 16px; /* بدلاً من 20px */
+  pointer-events: none;
+}
+
+
+/* ✅ زر البحث المتقدم أصبح React Component - CSS القديم محذوف */
+
+/* ============================================ */
+/* 📱 Global Responsive Design for All Pages */
+/* ============================================ */
+
+/* Mobile First - جميع الصفحات */
+@media (max-width: 768px) {
+  /* Container adjustments */
+  .container, main {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  /* Headings */
+  h1 {
+    font-size: 1.75rem !important;
+  }
+
+  h2 {
+    font-size: 1.5rem !important;
+  }
+
+  h3 {
+    font-size: 1.25rem !important;
+  }
+
+  /* Buttons */
+  button {
+    font-size: 0.875rem !important;
+    padding: 0.625rem 1rem !important;
+  }
+
+  /* Cards */
+  .card, [class*="card"] {
+    margin-bottom: 1rem !important;
+  }
+
+  /* Grid Layouts */
+  .grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* Flex Layouts */
+  .flex {
+    flex-wrap: wrap !important;
+  }
+}
+
+/* Mobile - 480px */
+@media (max-width: 480px) {
+  /* تصغير النصوص */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  h3 {
+    font-size: 1.125rem !important;
+  }
+
+  /* تصغير الأزرار */
+  button {
+    font-size: 0.8125rem !important;
+    padding: 0.5rem 0.875rem !important;
+  }
+
+  /* التباعد */
+  .space-y-8 > * + * {
+    margin-top: 1.5rem !important;
+  }
+
+  .space-y-6 > * + * {
+    margin-top: 1rem !important;
+  }
+
+  /* الصور */
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Tables */
+  table {
+    font-size: 0.75rem !important;
+  }
+
+  /* Input Fields */
+  input, textarea, select {
+    font-size: 1rem !important; /* Prevent iOS zoom */
+  }
+}
+
+/* Tailwind Responsive Overrides */
+@media (max-width: 768px) {
+  /* تحويل md:grid-cols-2 إلى عمود واحد */
+  .md\:grid-cols-2,
+  .md\:grid-cols-3,
+  .md\:grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* تحويل الـ flex من row إلى column */
+  .md\:flex-row {
+    flex-direction: column !important;
+  }
+
+  /* إخفاء العناصر المخفية في الموبايل */
+  .md\:block {
+    display: block !important;
+  }
+
+  .md\:hidden {
+    display: none !important;
+  }
+}
+
+/* Landscape Mode */
+@media (max-height: 500px) and (orientation: landscape) {
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  .py-8, .py-12 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  /* زيادة حجم الأزرار للمس */
+  button, a[role="button"] {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* إزالة hover effects على الموبايل */
+  *:hover {
+    transform: none !important;
+  }
+}
+

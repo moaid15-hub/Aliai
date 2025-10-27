@@ -1,0 +1,137 @@
+/* components/personas/iraqi-teacher/ExplanationDisplay.css */
+/* أنماط عرض الشرح */
+
+.explanation-display {
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+  direction: rtl;
+  font-family: 'Arial', sans-serif;
+}
+
+.explanation-display__title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  color: #2c3e50;
+}
+
+.explanation-display__icon {
+  font-size: 1.5rem;
+  margin-left: 10px;
+  color: #3498db;
+}
+
+.explanation-display__title h3 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: bold;
+}
+
+.explanation-display__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #666;
+}
+
+.explanation-display__loading-spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid #e3e3e3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: 15px;
+}
+
+.explanation-display__error {
+  background: linear-gradient(135deg, #ffebee, #ffcdd2);
+  border: 1px solid #ef5350;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.explanation-display__content {
+  line-height: 1.8;
+  font-size: 1.1rem;
+  color: #2c3e50;
+}
+
+.explanation-display__content h4 {
+  color: #e74c3c;
+  margin-top: 20px;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.explanation-display__content p {
+  margin: 15px 0;
+  text-align: justify;
+}
+
+.explanation-display__content ul {
+  margin: 15px 0;
+  padding-right: 20px;
+}
+
+.explanation-display__content li {
+  margin: 10px 0;
+  position: relative;
+}
+
+.explanation-display__content li::before {
+  content: "✓";
+  color: #27ae60;
+  font-weight: bold;
+  position: absolute;
+  right: -20px;
+}
+
+.explanation-display__content strong {
+  color: #8e44ad;
+  font-weight: bold;
+}
+
+.explanation-display__content em {
+  background: linear-gradient(120deg, #f39c12, #e67e22);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-style: normal;
+  font-weight: bold;
+}
+
+.explanation-display__footer {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 2px solid #3498db;
+  text-align: center;
+  color: #7f8c8d;
+  font-style: italic;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .explanation-display {
+    padding: 15px;
+    margin: 15px 0;
+  }
+  
+  .explanation-display__title h3 {
+    font-size: 1.2rem;
+  }
+  
+  .explanation-display__content {
+    font-size: 1rem;
+  }
+}

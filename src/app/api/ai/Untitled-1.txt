@@ -1,0 +1,355 @@
+src/lib/ai/router.ts
+typescriptimport Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+export async function routeAIRequest(
+  userPlan: string,
+  prompt: string,
+  type: 'chat' | 'code'
+) {
+  switch(userPlan) {
+    case 'free':
+      return generateBasicResponse(prompt, type);
+      
+    case 'medium':
+      return generateGeminiResponse(prompt, type);
+      
+    case 'expert':
+      return generateClaudeResponse(prompt, type);
+      
+    default:
+      return generateBasicResponse(prompt, type);
+  }
+}
+
+async function generateBasicResponse(prompt: string, type: string) {
+  // AI بسيط - ردود محدودة
+  if (type === 'code') {
+    return {
+      code: `<!-- كود بسيط -->\n<div>${prompt}</div>`,
+      language: 'html'
+    };
+  }
+  return { message: 'رد بسيط: ' + prompt };
+}
+
+async function generateGeminiResponse(prompt: string, type: string) {
+  const model = gemini.getGenerativeModel({ model: "gemini-pro" });
+  
+  const systemPrompt = type === 'code' 
+    ? 'أنت مبرمج خبير. اكتب كود نظيف واحترافي فقط بدون شرح.'
+    : 'أنت مساعد ذكي ومفيد.';
+    
+  const result = await model.generateContent(systemPrompt + '\n\n' + prompt);
+  const response = await result.response;
+  
+  if (type === 'code') {
+    return {
+      code: extractCode(response.text()),
+      language: detectLanguage(prompt)
+    };
+  }
+  
+  return { message: response.text() };
+}
+
+async function generateClaudeResponse(prompt: string, type: string) {
+  const systemPrompt = type === 'code'
+    ? 'أنت خبير برمجة متقدم. اكتب كود احترافي كامل جاهز للاستخدام.'
+    : 'أنت مساعد ذكي متقدم.';
+    
+  const message = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4096,
+    system: systemPrompt,
+    messages: [{
+      role: "user",
+      content: prompt
+    }]
+  });
+  
+  const content = message.content[0];
+  const text = content.type === 'text' ? content.text : '';
+  
+  if (type === 'code') {
+    return {
+      code: extractCode(text),
+      language: detectLanguage(prompt)
+    };
+  }
+  
+  return { message: text };
+}
+
+function extractCode(text: string): string {
+  const codeMatch = text.match(/```[\w]*\n([\s\S]*?)```/);
+  return codeMatch ? codeMatch[1].trim() : text;
+}
+
+function detectLanguage(prompt: string): string {
+  if (prompt.includes('react') || prompt.includes('jsx')) return 'jsx';
+  if (prompt.includes('typescript') || prompt.includes('tsx')) return 'tsx';
+  if (prompt.includes('css')) return 'css';
+  if (prompt.includes('javascript') || prompt.includes('js')) return 'javascript';
+  return 'html';
+}
+
+✅ 1/5 جاهز - التالي؟Wiederholenاصالتالي🔥 الملف الصعب 2/5
+
+src/app/api/chat/route.ts
+typescriptimport { NextRequest, NextResponse } from 'next/server';
+import { routeAIRequest } from '@/lib/ai/router';
+import { checkUsageLimit, incrementUsage } from '@/lib/subscription/checker';
+import { getUserPlan } from '@/lib/subscription/checker';
+
+export async function POST(req: NextRequest) {
+  try {
+    const { message, userId } = await req.json();
+    
+    if (!userId || !message) {
+      return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
+    }
+    
+    // 1. فحص حد الاستخدام
+    const canUse = await checkUsageLimit(userId);
+    if (!canUse) {
+      return NextResponse.json({ 
+        error: 'وصلت للحد اليومي',
+        upgrade: true 
+      }, { status: 429 });
+    }
+    
+    // 2. جلب باقة المستخدم
+    const userPlan = await getUserPlan(userId);
+    
+    // 3. توجيه للـ AI المناسب
+    const response = await routeAIRequest(userPlan, message, 'chat');
+    
+    // 4. تسجيل الاستخدام
+    await incrementUsage(userId);
+    
+    return NextResponse.json({ 
+      response: response.message,
+      plan: userPlan 
+    });
+    
+  } catch (error) {
+    console.error('Chat API Error:', error);
+    return NextResponse.json({ error: 'خطأ في الخادم' }, { status: 500 });
+  }
+}
+
+✅ 2/5 جاهز - التالي؟Wiederholenاصالتالي🔥 الملف الصعب 3/5
+
+src/app/api/code-gen/route.ts
+typescriptimport { NextRequest, NextResponse } from 'next/server';
+import { routeAIRequest } from '@/lib/ai/router';
+import { checkUsageLimit, incrementUsage, getUserPlan } from '@/lib/subscription/checker';
+
+export async function POST(req: NextRequest) {
+  try {
+    const { prompt, userId, currentCode } = await req.json();
+    
+    if (!userId || !prompt) {
+      return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 });
+    }
+    
+    // 1. فحص الحد
+    const canUse = await checkUsageLimit(userId);
+    if (!canUse) {
+      return NextResponse.json({ 
+        error: 'وصلت للحد اليومي',
+        upgrade: true 
+      }, { status: 429 });
+    }
+    
+    // 2. جلب الباقة
+    const userPlan = await getUserPlan(userId);
+    
+    // 3. بناء الطلب
+    let fullPrompt = prompt;
+    if (currentCode) {
+      fullPrompt = `الكود الحالي:\n${currentCode}\n\nالطلب: ${prompt}`;
+    }
+    
+    // 4. توليد الكود
+    const result = await routeAIRequest(userPlan, fullPrompt, 'code');
+    
+    // 5. تسجيل الاستخدام
+    await incrementUsage(userId);
+    
+    return NextResponse.json({
+      code: result.code,
+      language: result.language,
+      plan: userPlan
+    });
+    
+  } catch (error) {
+    console.error('Code Gen Error:', error);
+    return NextResponse.json({ error: 'خطأ في توليد الكود' }, { status: 500 });
+  }
+}
+
+✅ 3/5 جاهز - التالي؟Wiederholenاصالتالي🔥 الملف الصعب 4/5
+
+src/components/CodeEditor.tsx
+typescript'use client';
+
+import { useState, useEffect } from 'react';
+import Editor from '@monaco-editor/react';
+
+interface CodeEditorProps {
+  code: string;
+  language: string;
+  onChange: (value: string) => void;
+  readOnly?: boolean;
+}
+
+export default function CodeEditor({ 
+  code, 
+  language, 
+  onChange,
+  readOnly = false 
+}: CodeEditorProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="loading">جاري التحميل...</div>;
+  }
+
+  return (
+    <div className="code-editor">
+      <div className="editor-header">
+        <span className="language-badge">{language}</span>
+        <button 
+          onClick={() => navigator.clipboard.writeText(code)}
+          className="copy-btn"
+        >
+          📋 نسخ
+        </button>
+      </div>
+      
+      <Editor
+        height="100%"
+        language={language}
+        value={code}
+        onChange={(value) => onChange(value || '')}
+        theme="vs-dark"
+        options={{
+          readOnly,
+          minimap: { enabled: false },
+          fontSize: 14,
+          lineNumbers: 'on',
+          scrollBeyondLastLine: false,
+          automaticLayout: true,
+          tabSize: 2,
+        }}
+      />
+    </div>
+  );
+}
+
+✅ 4/5 جاهز - التالي؟Wiederholenاصالتالي  وتوقف🔥 الملف الصعب 5/5
+
+src/components/LivePreview.tsx
+typescript'use client';
+
+import { useEffect, useRef, useState } from 'react';
+
+interface LivePreviewProps {
+  code: string;
+  language: string;
+}
+
+export default function LivePreview({ code, language }: LivePreviewProps) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!iframeRef.current) return;
+
+    try {
+      const iframe = iframeRef.current;
+      const document = iframe.contentDocument;
+      
+      if (!document) return;
+
+      let html = '';
+      
+      if (language === 'html') {
+        html = code;
+      } else if (language === 'jsx' || language === 'tsx') {
+        html = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+              <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+              <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="text/babel">${code}</script>
+            </body>
+          </html>
+        `;
+      } else {
+        html = `
+          <!DOCTYPE html>
+          <html>
+            <head><style>${language === 'css' ? code : ''}</style></head>
+            <body>
+              <div id="preview">المعاينة</div>
+              <script>${language === 'javascript' ? code : ''}</script>
+            </body>
+          </html>
+        `;
+      }
+
+      document.open();
+      document.write(html);
+      document.close();
+      
+      setError(null);
+      
+    } catch (err) {
+      setError('خطأ في عرض المعاينة');
+      console.error(err);
+    }
+  }, [code, language]);
+
+  return (
+    <div className="live-preview">
+      <div className="preview-header">
+        <span>المعاينة المباشرة</span>
+        <button 
+          onClick={() => iframeRef.current?.contentWindow?.location.reload()}
+          className="refresh-btn"
+        >
+          🔄 تحديث
+        </button>
+      </div>
+      
+      {error && <div className="error">{error}</div>}
+      
+      <iframe
+        ref={iframeRef}
+        className="preview-iframe"
+        sandbox="allow-scripts"
+        title="preview"
+      />
+    </div>
+  );
+}
+
+✅ 5/5 جاهز!

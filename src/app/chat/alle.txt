@@ -1,0 +1,2881 @@
+// ui-components.tsx
+"use client";
+
+import React from "react";
+import { Check, X, Copy, Edit2, Trash2, Search, ExternalLink, Zap, User, Brain, Settings, Clock, Plus, MessageSquare, LogOut } from "lucide-react";
+import { Message, Conversation, Settings as SettingsType } from './types';
+import { AI_PROVIDERS } from './config';
+
+// =======================
+// ERROR BOUNDARY
+// =======================
+
+export class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">Ø­Ø¯Ø« Ø®Ø·Ø£ Ù…Ø§ ðŸ˜”</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">Ø¹Ø°Ø±Ø§Ù‹ØŒ Ø­Ø¯Ø« Ø®Ø·Ø£ ØºÙŠØ± Ù…ØªÙˆÙ‚Ø¹</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
+            >
+              Ø¥Ø¹Ø§Ø¯Ø© ØªØ­Ù…ÙŠÙ„ Ø§Ù„ØµÙØ­Ø©
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// =======================
+// TOAST
+// =======================
+
+export const Toast = ({ 
+  message, 
+  type = 'success', 
+  onClose 
+}: { 
+  message: string; 
+  type?: 'success' | 'error'; 
+  onClose: () => void 
+}) => (
+  <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-2xl shadow-2xl animate-fadeIn flex items-center gap-3 ${
+    type === 'success' 
+      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white' 
+      : 'bg-gradient-to-r from-red-600 to-rose-600 text-white'
+  }`}>
+    {type === 'success' ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
+    <span className="font-semibold">{message}</span>
+    <button onClick={onClose} className="ml-2 hover:opacity-80">
+      <X className="w-4 h-4" />
+    </button>
+  </div>
+);
+
+// =======================
+// TYPING INDICATOR
+// =======================
+
+export const TypingIndicator = () => (
+  <div className="flex items-center gap-2 px-5 py-4 bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-900/20 dark:via-blue-900/20 dark:to-cyan-900/20 rounded-3xl shadow-lg border border-purple-100 dark:border-purple-800/30">
+    <div className="flex gap-1.5">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="w-2.5 h-2.5 bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 rounded-full animate-bounce shadow-sm"
+          style={{ 
+            animationDelay: `${i * 0.15}s`, 
+            animationDuration: "1s",
+            filter: 'drop-shadow(0 0 4px rgba(139, 92, 246, 0.5))'
+          }}
+        />
+      ))}
+    </div>
+    <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Ø¬Ø§Ø±ÙŠ Ø§Ù„ÙƒØªØ§Ø¨Ø©</span>
+  </div>
+);
+
+// =======================
+// MESSAGE ACTIONS
+// =======================
+
+export const MessageActions = ({ 
+  message, 
+  onCopy, 
+  onEdit, 
+  onDelete 
+}: { 
+  message: Message; 
+  onCopy: () => void; 
+  onEdit: () => void; 
+  onDelete: () => void;
+}) => (
+  <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+    <button
+      onClick={onCopy}
+      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
+      title="Ù†Ø³Ø®"
+    >
+      <Copy className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+    </button>
+    {message.role === 'user' && (
+      <>
+        <button
+          onClick={onEdit}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
+          title="ØªØ¹Ø¯ÙŠÙ„"
+        >
+          <Edit2 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-all"
+          title="Ø­Ø°Ù"
+        >
+          <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+        </button>
+      </>
+    )}
+  </div>
+);
+
+// =======================
+// CODE HIGHLIGHTING
+// =======================
+
+// Ù…Ø­Ø±Ø± ÙƒÙˆØ¯ Ø¬Ø§Ù†Ø¨ÙŠ Ø³Ø±ÙŠØ¹ ÙˆØ®ÙÙŠÙ - Ø¨Ø¯ÙˆÙ† ØªØ£Ø«ÙŠØ± Ø¹Ù„Ù‰ Ø§Ù„Ø£Ø¯Ø§Ø¡
+// Ø¯Ø§Ù„Ø© ØªÙ†Ø¸ÙŠÙ HTML Ù…Ø­Ø³Ù‘Ù†Ø© Ø¨Ø§Ù„Ù„ØºØ© Ø§Ù„Ø¹Ø±Ø¨ÙŠØ©
+const ØªÙ†Ø¸ÙŠÙ_HTML = (Ù†Øµ_HTML: string): string => {
+  if (typeof window !== 'undefined') {
+    // ÙÙŠ Ø§Ù„Ù…ØªØµÙØ­ - Ø§Ø³ØªØ®Ø¯Ø§Ù… DOM
+    const Ø¹Ù†ØµØ±_Ù…Ø¤Ù‚Øª = document.createElement("DIV");
+    Ø¹Ù†ØµØ±_Ù…Ø¤Ù‚Øª.innerHTML = Ù†Øµ_HTML;
+    return Ø¹Ù†ØµØ±_Ù…Ø¤Ù‚Øª.textContent || Ø¹Ù†ØµØ±_Ù…Ø¤Ù‚Øª.innerText || "";
+  } else {
+    // ÙÙŠ Ø§Ù„Ø®Ø§Ø¯Ù… - Ø§Ø³ØªØ®Ø¯Ø§Ù… regex Ù…Ø­Ø³Ù‘Ù†
+    return Ù†Øµ_HTML
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Ø¥Ø²Ø§Ù„Ø© Ø§Ù„Ø³ÙƒØ±ÙŠØ¨Øª
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')   // Ø¥Ø²Ø§Ù„Ø© Ø§Ù„Ø³ØªØ§ÙŠÙ„
+      .replace(/<[^>]*>/g, '')                          // Ø¥Ø²Ø§Ù„Ø© Ø¬Ù…ÙŠØ¹ Ø§Ù„Ø¹Ù„Ø§Ù…Ø§Øª
+      .replace(/&[^;]+;/g, ' ')                         // Ø¥Ø²Ø§Ù„Ø© HTML entities
+      .replace(/\s+/g, ' ')                             // ØªÙ†Ø¸ÙŠÙ Ø§Ù„Ù…Ø³Ø§ÙØ§Øª Ø§Ù„Ù…ØªØ¹Ø¯Ø¯Ø©
+      .trim();
+  }
+};
+
+const CodeEditor = ({ code, language }: { code: string; language?: string }) => {
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [editableCode, setEditableCode] = React.useState(code);
+  
+  // Ø¯Ø§Ù„Ø© Ù…Ø­Ø³Ù‘Ù†Ø© ÙˆØ¢Ù…Ù†Ø© Ù„ØªÙ„ÙˆÙŠÙ† Ø§Ù„ÙƒÙˆØ¯ - Ø¨Ø¯ÙˆÙ† ØªØ¯Ø§Ø®Ù„ HTML
+  const colorizeCode = React.useMemo(() => {
+    if (!code || typeof code !== 'string') return '';
+    
+    // ØªÙ†Ø¸ÙŠÙ Ø§Ù„ÙƒÙˆØ¯ Ù…Ù† Ø£ÙŠ HTML Ù…ÙˆØ¬ÙˆØ¯ Ø£ÙˆÙ„Ø§Ù‹
+    let cleanCode = ØªÙ†Ø¸ÙŠÙ_HTML(code);
+    
+    const lines = cleanCode.split('\n');
+    
+    const processLine = (line: string): string => {
+      // ØªØ¬Ù†Ø¨ Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø© Ø¥Ø°Ø§ ÙƒØ§Ù† Ø§Ù„Ø³Ø·Ø± ÙØ§Ø±ØºØ§Ù‹
+      if (!line.trim()) return line;
+      
+      // 1. Ø§Ù„ØªØ¹Ù„ÙŠÙ‚Ø§Øª Ø£ÙˆÙ„Ø§Ù‹ (Ù„Ø£Ù†Ù‡Ø§ ØªØºØ·ÙŠ Ø¨Ø§Ù‚ÙŠ Ø§Ù„Ø³Ø·Ø±)
+      if (line.trim().startsWith('#')) {
+        return `<span class="text-gray-400 italic bg-gray-800/30 px-1 rounded">${line}</span>`;
+      }
+      
+      // Ø§Ø³ØªØ®Ø¯Ø§Ù… approach Ù…Ø®ØªÙ„Ù - Ù†Ù‚Ø³Ù… Ø§Ù„Ø³Ø·Ø± Ø¥Ù„Ù‰ tokens
+      const tokens = [];
+      let currentToken = '';
+      let inString = false;
+      let stringChar = '';
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (!inString && (char === '"' || char === "'" || char === '`')) {
+          if (currentToken) {
+            tokens.push({ type: 'normal', value: currentToken });
+            currentToken = '';
+          }
+          inString = true;
+          stringChar = char;
+          currentToken = char;
+        } else if (inString && char === stringChar && line[i-1] !== '\\') {
+          currentToken += char;
+          tokens.push({ type: 'string', value: currentToken });
+          currentToken = '';
+          inString = false;
+          stringChar = '';
+        } else if (inString) {
+          currentToken += char;
+        } else if (/\s/.test(char)) {
+          if (currentToken) {
+            tokens.push({ type: 'normal', value: currentToken });
+            currentToken = '';
+          }
+          tokens.push({ type: 'space', value: char });
+        } else if (/[+\-*\/=<>!(){}[\];,.]/.test(char)) {
+          if (currentToken) {
+            tokens.push({ type: 'normal', value: currentToken });
+            currentToken = '';
+          }
+          tokens.push({ type: 'operator', value: char });
+        } else {
+          currentToken += char;
+        }
+      }
+      
+      if (currentToken) {
+        tokens.push({ type: inString ? 'string' : 'normal', value: currentToken });
+      }
+      
+      // Ù…Ø¹Ø§Ù„Ø¬Ø© ÙƒÙ„ token
+      return tokens.map(token => {
+        switch (token.type) {
+          case 'string':
+            return `<span class="text-yellow-400 font-medium bg-yellow-900/20 px-1 rounded">${token.value}</span>`;
+          
+          case 'operator':
+            if (/[+\-*\/]/.test(token.value)) {
+              return `<span class="text-red-400 font-bold">${token.value}</span>`;
+            } else if (/[=<>!]/.test(token.value)) {
+              return `<span class="text-orange-400 font-bold">${token.value}</span>`;
+            } else {
+              return `<span class="text-gray-400">${token.value}</span>`;
+            }
+          
+          case 'space':
+            return token.value;
+          
+          case 'normal':
+            const value = token.value;
+            
+            // ÙƒÙ„Ù…Ø§Øª Ù…ÙØªØ§Ø­ÙŠØ©
+            if (/^(def|class)$/.test(value)) {
+              return `<span class="text-purple-400 font-bold">${value}</span>`;
+            } else if (/^(if|else|elif|for|while|try|except|with|as|in|not|and|or|return|import|from)$/.test(value)) {
+              return `<span class="text-blue-400 font-bold">${value}</span>`;
+            } else if (/^(True|False|None|print)$/.test(value)) {
+              return `<span class="text-red-400 font-bold">${value}</span>`;
+            }
+            
+            // Ø£Ø±Ù‚Ø§Ù…
+            else if (/^\d+(\.\d+)?$/.test(value)) {
+              return `<span class="text-cyan-400 font-semibold bg-cyan-900/20 px-1 rounded">${value}</span>`;
+            }
+            
+            // Ù…ØªØºÙŠØ±Ø§Øª Ø¹Ø±Ø¨ÙŠØ© Ø£Ùˆ Ø¥Ù†Ø¬Ù„ÙŠØ²ÙŠØ©
+            else if (/^[a-zA-Z_\u0600-\u06FF][a-zA-Z0-9_\u0600-\u06FF]*$/.test(value)) {
+              return `<span class="text-green-300">${value}</span>`;
+            }
+            
+            return value;
+          
+          default:
+            return token.value;
+        }
+      }).join('');
+    };
+    
+    const coloredLines = lines.map((line, index) => {
+      const colored = processLine(line);
+      // Ø¥Ø¶Ø§ÙØ© Ø£Ø±Ù‚Ø§Ù… Ø§Ù„Ø£Ø³Ø·Ø±
+      return `<span class="text-gray-500 text-xs mr-3 select-none opacity-60">${String(index + 1).padStart(2, '0')}</span>${colored}`;
+    });
+    
+    return coloredLines.join('\n');
+  }, [code, language]);
+
+  const toggleExpanded = () => setIsExpanded(!isExpanded);
+
+  return (
+    <div className="my-6 rounded-2xl overflow-hidden border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-br from-[#0a0e1a] via-[#0d1117] to-[#161b22] shadow-2xl">
+      {/* Header Ù…Ø­Ø³Ù‘Ù† Ù…Ø¹ ØªØ¯Ø±Ø¬ Ø¬Ù…ÙŠÙ„ */}
+      <div className="px-6 py-3 bg-gradient-to-r from-[#1e293b] via-[#334155] to-[#475569] text-gray-100 text-sm font-mono border-b-2 border-blue-400/30 flex items-center justify-between backdrop-blur-sm">
+        <span className="flex items-center gap-3">
+          <div className="flex gap-2">
+            <span className="w-3 h-3 bg-gradient-to-br from-red-400 to-red-500 rounded-full shadow-lg animate-pulse"></span>
+            <span className="w-3 h-3 bg-gradient-to-br from-yellow-400 to-orange-400 rounded-full shadow-lg animate-pulse" style={{animationDelay: '0.2s'}}></span>
+            <span className="w-3 h-3 bg-gradient-to-br from-green-400 to-emerald-400 rounded-full shadow-lg animate-pulse" style={{animationDelay: '0.4s'}}></span>
+          </div>
+          <div className="h-4 w-px bg-gray-400/30 mx-2"></div>
+          <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent font-bold text-base">
+            {language === 'python' ? 'ðŸ Python' : language === 'javascript' ? 'âš¡ JavaScript' : 'ðŸ’» ' + (language || 'Code')}
+          </span>
+        </span>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleExpanded}
+            className="text-gray-300 hover:text-cyan-300 p-2 rounded-lg transition-all duration-200 hover:bg-blue-500/20 transform hover:scale-110"
+            title={isExpanded ? "Ø¹Ø±Ø¶ Ù…Ø¶ØºÙˆØ·" : "Ù…Ø­Ø±Ø± Ø¬Ø§Ù†Ø¨ÙŠ"}
+          >
+            {isExpanded ? <Edit2 size={16} /> : <ExternalLink size={16} />}
+          </button>
+          <button
+            onClick={() => navigator.clipboard.writeText(code)}
+            className="text-gray-300 hover:text-green-300 p-2 rounded-lg transition-all duration-200 hover:bg-green-500/20 transform hover:scale-110"
+            title="Ù†Ø³Ø® Ø§Ù„ÙƒÙˆØ¯"
+          >
+            <Copy size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* Ø§Ù„Ø¹Ø±Ø¶ Ø§Ù„Ø¹Ø§Ø¯ÙŠ Ù…Ø­Ø³Ù‘Ù† */}
+      {!isExpanded && (
+        <div className="bg-gradient-to-br from-[#0a0e1a] via-[#0d1117] to-[#111827] p-6 font-mono text-sm overflow-auto max-h-96 leading-8 relative">
+          {/* Ø®Ù„ÙÙŠØ© Ø´Ø¨ÙƒÙŠØ© Ø®ÙÙŠÙØ© */}
+          <div className="absolute inset-0 opacity-5 bg-grid-pattern pointer-events-none"></div>
+          
+          <pre 
+            className="whitespace-pre-wrap text-gray-100 m-0 relative z-10"
+            style={{ 
+              direction: 'ltr', 
+              textAlign: 'left',
+              fontFamily: "'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', monospace",
+              fontSize: '14px',
+              lineHeight: '1.7',
+              textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+              letterSpacing: '0.3px'
+            }}
+            dangerouslySetInnerHTML={{ __html: colorizeCode }}
+          />
+        </div>
+      )}
+
+      {/* Ø§Ù„Ø¹Ø±Ø¶ Ø§Ù„Ø¬Ø§Ù†Ø¨ÙŠ Ø§Ù„Ù…ØªÙˆØ³Ø¹ */}
+      {isExpanded && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 h-96">
+          {/* Ù…Ø­Ø±Ø± Ø§Ù„Ø¥Ø¯Ø®Ø§Ù„ - ÙŠØ³Ø§Ø± */}
+          <div className="bg-[#0d1117] border-r border-gray-600">
+            <div className="p-2 bg-[#161b22] border-b border-gray-600">
+              <span className="text-xs text-gray-400">ðŸ“ ØªØ­Ø±ÙŠØ± Ø§Ù„ÙƒÙˆØ¯</span>
+            </div>
+            <textarea
+              value={editableCode}
+              onChange={(e) => setEditableCode(e.target.value)}
+              className="w-full h-80 p-3 bg-[#0d1117] text-gray-100 font-mono text-sm resize-none outline-none"
+              style={{ 
+                direction: 'ltr',
+                fontFamily: "'Fira Code', 'JetBrains Mono', 'Consolas', monospace"
+              }}
+              placeholder="Ø§ÙƒØªØ¨ Ø§Ù„ÙƒÙˆØ¯ Ù‡Ù†Ø§..."
+            />
+          </div>
+
+          {/* Ù…Ø¹Ø§ÙŠÙ†Ø© Ø§Ù„ÙƒÙˆØ¯ - ÙŠÙ…ÙŠÙ† */}
+          <div className="bg-[#0d1117]">
+            <div className="p-2 bg-[#161b22] border-b border-gray-600">
+              <span className="text-xs text-gray-400">ðŸ‘ï¸ Ù…Ø¹Ø§ÙŠÙ†Ø© ÙÙˆØ±ÙŠØ©</span>
+            </div>
+            <div className="p-3 font-mono text-sm overflow-auto h-80 leading-7">
+              <pre 
+                className="whitespace-pre-wrap text-gray-100 m-0"
+                style={{ 
+                  direction: 'ltr', 
+                  textAlign: 'left',
+                  fontFamily: "'Fira Code', 'JetBrains Mono', 'Consolas', monospace"
+                }}
+              >
+                {editableCode}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ØªØµØ¯ÙŠØ± CodeEditor Ù„Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù… ÙÙŠ Ø§Ù„Ù…Ù„ÙØ§Øª Ø§Ù„Ø£Ø®Ø±Ù‰
+export { CodeEditor };
+
+const ØªØ­Ù„ÙŠÙ„_Ù…Ø­ØªÙˆÙ‰_Ø§Ù„Ø±Ø³Ø§Ù„Ø© = (Ù…Ø­ØªÙˆÙ‰: string) => {
+  // Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø£Ù† Ø§Ù„Ù…Ø­ØªÙˆÙ‰ Ù„ÙŠØ³ undefined Ø£Ùˆ null
+  if (!Ù…Ø­ØªÙˆÙ‰ || typeof Ù…Ø­ØªÙˆÙ‰ !== 'string') {
+    console.warn('âš ï¸ Ù…Ø­ØªÙˆÙ‰ ØºÙŠØ± ØµØ­ÙŠØ­ ØªÙ… ØªÙ…Ø±ÙŠØ±Ù‡ Ù„Ø¯Ø§Ù„Ø© ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø­ØªÙˆÙ‰:', Ù…Ø­ØªÙˆÙ‰);
+    return [{ type: 'text', content: '' }];
+  }
+  
+  console.log('ðŸ” ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù…Ø­ØªÙˆÙ‰:', Ù…Ø­ØªÙˆÙ‰.substring(0, 100) + '...');
+  const Ù†Ù…Ø·_ÙƒØªÙ„Ø©_Ø§Ù„ÙƒÙˆØ¯ = /```(\w+)?\n([\s\S]*?)```/g;
+  const Ø£Ø¬Ø²Ø§Ø¡: Array<{ type: string; content: string; language?: string }> = [];
+  let Ø¢Ø®Ø±_ÙÙ‡Ø±Ø³ = 0;
+  let ØªØ·Ø§Ø¨Ù‚;
+
+  while ((ØªØ·Ø§Ø¨Ù‚ = Ù†Ù…Ø·_ÙƒØªÙ„Ø©_Ø§Ù„ÙƒÙˆØ¯.exec(Ù…Ø­ØªÙˆÙ‰)) !== null) {
+    if (ØªØ·Ø§Ø¨Ù‚.index > Ø¢Ø®Ø±_ÙÙ‡Ø±Ø³) {
+      Ø£Ø¬Ø²Ø§Ø¡.push({ type: 'text', content: Ù…Ø­ØªÙˆÙ‰.slice(Ø¢Ø®Ø±_ÙÙ‡Ø±Ø³, ØªØ·Ø§Ø¨Ù‚.index) });
+    }
+    // ØªÙ†Ø¸ÙŠÙ Ø§Ù„ÙƒÙˆØ¯ Ù…Ù† HTML Ù‚Ø¨Ù„ Ø¥Ø¶Ø§ÙØªÙ‡
+    const ÙƒÙˆØ¯_Ù†Ø¸ÙŠÙ = ØªÙ†Ø¸ÙŠÙ_HTML(ØªØ·Ø§Ø¨Ù‚[2].trim());
+    Ø£Ø¬Ø²Ø§Ø¡.push({ 
+      type: 'code', 
+      language: ØªØ·Ø§Ø¨Ù‚[1] || 'javascript', 
+      content: ÙƒÙˆØ¯_Ù†Ø¸ÙŠÙ 
+    });
+    Ø¢Ø®Ø±_ÙÙ‡Ø±Ø³ = ØªØ·Ø§Ø¨Ù‚.index + ØªØ·Ø§Ø¨Ù‚[0].length;
+  }
+
+  if (Ø¢Ø®Ø±_ÙÙ‡Ø±Ø³ < Ù…Ø­ØªÙˆÙ‰.length) {
+    Ø£Ø¬Ø²Ø§Ø¡.push({ type: 'text', content: Ù…Ø­ØªÙˆÙ‰.slice(Ø¢Ø®Ø±_ÙÙ‡Ø±Ø³) });
+  }
+
+  console.log('ðŸ“Š Ø§Ù„Ø£Ø¬Ø²Ø§Ø¡ Ø§Ù„Ù…Ø­Ù„Ù„Ø©:', Ø£Ø¬Ø²Ø§Ø¡.length, Ø£Ø¬Ø²Ø§Ø¡.map(p => p.type));
+  return Ø£Ø¬Ø²Ø§Ø¡.length > 0 ? Ø£Ø¬Ø²Ø§Ø¡ : [{ type: 'text', content: Ù…Ø­ØªÙˆÙ‰ }];
+};
+
+// Ù„Ù„ØªÙˆØ§ÙÙ‚ Ù…Ø¹ Ø§Ù„ÙƒÙˆØ¯ Ø§Ù„Ù…ÙˆØ¬ÙˆØ¯
+const parseMessageContent = ØªØ­Ù„ÙŠÙ„_Ù…Ø­ØªÙˆÙ‰_Ø§Ù„Ø±Ø³Ø§Ù„Ø©;
+
+// =======================
+// MESSAGE BUBBLE
+// =======================
+
+export const MessageBubble = ({ 
+  message, 
+  onDeepSearch, 
+  onCopy, 
+  onEdit, 
+  onDelete 
+}: { 
+  message: Message; 
+  onDeepSearch?: (content: string) => void;
+  onCopy: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) => {
+  const isUser = message.role === 'user';
+  
+  return (
+    <div className={`flex gap-4 mb-6 animate-fadeIn group ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+      <div className={`flex-shrink-0 w-11 h-11 rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105 ${
+        isUser 
+          ? 'bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600' 
+          : 'bg-gradient-to-br from-blue-600 via-cyan-600 to-teal-600'
+      }`}>
+        {isUser ? <User className="w-6 h-6 text-white" /> : (
+          <svg width="24" height="24" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="60" cy="60" r="6" fill="white"/>
+            
+            {/* Ø§Ù„Ø¯Ø§Ø¦Ø±Ø© Ø§Ù„Ø®Ø§Ø±Ø¬ÙŠØ© */}
+            <line x1="60" y1="60" x2="60" y2="20" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="85" y2="32" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="95" y2="50" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="95" y2="70" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="85" y2="88" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="60" y2="100" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="35" y2="88" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="25" y2="70" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="25" y2="50" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="60" y1="60" x2="35" y2="32" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            
+            {/* Ø§Ù„Ù†Ù‚Ø§Ø· Ø§Ù„Ø®Ø§Ø±Ø¬ÙŠØ© */}
+            <circle cx="60" cy="20" r="3" fill="white"/>
+            <circle cx="85" cy="32" r="3" fill="white"/>
+            <circle cx="95" cy="50" r="3" fill="white"/>
+            <circle cx="95" cy="70" r="3" fill="white"/>
+            <circle cx="85" cy="88" r="3" fill="white"/>
+            <circle cx="60" cy="100" r="3" fill="white"/>
+            <circle cx="35" cy="88" r="3" fill="white"/>
+            <circle cx="25" cy="70" r="3" fill="white"/>
+            <circle cx="25" cy="50" r="3" fill="white"/>
+            <circle cx="35" cy="32" r="3" fill="white"/>
+          </svg>
+        )}
+      </div>
+
+      <div className={`flex flex-col max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
+        {isUser ? (
+          <div className="relative">
+            <div className="rounded-3xl shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-purple-600 via-pink-600 to-rose-600 text-white rounded-br-md px-6 py-4 transform hover:-translate-y-0.5">
+              <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            </div>
+            <MessageActions 
+              message={message} 
+              onCopy={onCopy} 
+              onEdit={onEdit} 
+              onDelete={onDelete} 
+            />
+          </div>
+        ) : (
+          <div className="w-full space-y-4">
+            <div className="prose prose-sm dark:prose-invert max-w-none
+  prose-headings:text-purple-600 dark:prose-headings:text-purple-400
+  prose-headings:font-bold prose-headings:mb-3
+  prose-p:text-gray-800 dark:prose-p:text-gray-100
+  prose-p:leading-relaxed prose-p:mb-4
+  prose-code:bg-gray-100 dark:prose-code:bg-gray-800
+  prose-code:text-purple-600 dark:prose-code:text-purple-400
+  prose-code:px-2 prose-code:py-1 prose-code:rounded
+  prose-code:font-mono prose-code:text-sm
+  prose-pre:bg-gray-900 prose-pre:p-4 prose-pre:rounded-xl
+  prose-pre:overflow-x-auto
+  prose-ol:list-decimal prose-ol:mr-6 prose-ol:space-y-2
+  prose-ul:list-disc prose-ul:mr-6 prose-ul:space-y-2
+  prose-li:text-gray-700 dark:prose-li:text-gray-200">
+              {parseMessageContent(message.content).map((part, idx) => (
+                part.type === 'code' ? (
+                  <CodeEditor key={idx} code={part.content} language={part.language} />
+                ) : (
+                  <p key={idx} className="text-[17px] leading-7 whitespace-pre-wrap font-medium">
+                    {part.content}
+                  </p>
+                )
+              ))}
+            </div>
+            
+            {message.sources && message.sources.length > 0 && (
+              <div className="mt-5 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                  <Search className="w-4 h-4" />
+                  <span>Ù…ØµØ§Ø¯Ø± Ø§Ù„Ù…Ø¹Ù„ÙˆÙ…Ø§Øª</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {message.sources.map((source, idx) => {
+                    let domain = '';
+                    try {
+                      domain = new URL(source.url).hostname.replace('www.', '');
+                    } catch (e) {
+                      domain = 'Ù…ØµØ¯Ø±';
+                    }
+                    
+                    return (
+                      <a
+                        key={idx}
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group block"
+                      >
+                        <div className="h-full p-4 rounded-2xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500 transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-1">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center border border-purple-200 dark:border-purple-800">
+                              <img 
+                                src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+                                alt=""
+                                className="w-5 h-5"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">
+                                  {domain}
+                                </span>
+                                <ExternalLink className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-2 leading-tight">
+                                {source.title}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+                
+                {onDeepSearch && (
+                  <div className="flex justify-center pt-2">
+                    <button
+                      onClick={() => onDeepSearch(message.content)}
+                      className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                    >
+                      <Zap className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+                      <span>Ø¨Ø­Ø« Ù…ØªÙ‚Ø¯Ù…</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <MessageActions 
+              message={message} 
+              onCopy={onCopy} 
+              onEdit={onEdit} 
+              onDelete={onDelete} 
+            />
+          </div>
+        )}
+        
+        <div className="flex items-center gap-2 mt-2 px-2">
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+            {message.timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+          </span>
+          {!isUser && message.provider && (
+            <>
+              <span className="text-xs text-gray-400">â€¢</span>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-lg shadow-sm bg-gradient-to-r ${AI_PROVIDERS[message.provider]?.color || AI_PROVIDERS.local.color} ${AI_PROVIDERS[message.provider]?.textColor || AI_PROVIDERS.local.textColor}`}>
+                {AI_PROVIDERS[message.provider]?.name || 'Oqool AI'}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// =======================
+// SETTINGS MODAL
+// =======================
+
+export const SettingsModal = ({ 
+  isOpen, 
+  onClose, 
+  settings, 
+  onSettingsChange 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void;
+  settings: SettingsType;
+  onSettingsChange: (settings: SettingsType) => void;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl max-w-md w-full p-6 border-2 border-gray-200 dark:border-gray-700 animate-fadeIn">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Settings className="w-6 h-6" />
+            Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª
+          </h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-all">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Ø§Ù„Ø¨Ø­Ø« Ø§Ù„ØªÙ„Ù‚Ø§Ø¦ÙŠ Ø§Ù„Ø°ÙƒÙŠ
+              </span>
+              <button
+                onClick={() => onSettingsChange({ ...settings, autoSearch: !settings.autoSearch })}
+                className={`relative w-12 h-6 rounded-full transition-all ${
+                  settings.autoSearch ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  settings.autoSearch ? 'translate-x-6' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              ÙŠØ¨Ø­Ø« ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ø¹Ù†Ø¯ Ø§Ø³ØªØ®Ø¯Ø§Ù… ÙƒÙ„Ù…Ø§Øª Ù…Ø«Ù„ "Ø§Ø¨Ø­Ø« Ø¹Ù†"ØŒ "Ø¢Ø®Ø± Ø£Ø®Ø¨Ø§Ø±"ØŒ "Ù…Ø§ Ø£ÙØ¶Ù„" ÙˆØºÙŠØ±Ù‡Ø§
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              ØªØ£Ø«ÙŠØ±Ø§Øª Ø§Ù„ØµÙˆØª
+            </span>
+            <button
+              onClick={() => onSettingsChange({ ...settings, soundEnabled: !settings.soundEnabled })}
+              className={`relative w-12 h-6 rounded-full transition-all ${
+                settings.soundEnabled ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                settings.soundEnabled ? 'translate-x-6' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 dark:bg-gray-800">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              Ø§Ù„Ø±Ø³ÙˆÙ… Ø§Ù„Ù…ØªØ­Ø±ÙƒØ©
+            </span>
+            <button
+              onClick={() => onSettingsChange({ ...settings, animationsEnabled: !settings.animationsEnabled })}
+              className={`relative w-12 h-6 rounded-full transition-all ${
+                settings.animationsEnabled ? 'bg-purple-500' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+            >
+              <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                settings.animationsEnabled ? 'translate-x-6' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full mt-6 px-5 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all"
+        >
+          Ø­ÙØ¸ Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// =======================
+// SIDEBAR
+// =======================
+
+export const Sidebar = ({
+  conversations,
+  currentConversationId,
+  onNewChat,
+  onSelectConversation,
+  onDeleteConversation,
+  isOpen,
+  onLogout,
+  userName,
+  isGuest,
+}: {
+  conversations: Conversation[];
+  currentConversationId: string;
+  onNewChat: () => void;
+  onSelectConversation: (id: string) => void;
+  onDeleteConversation: (id: string) => void;
+  isOpen: boolean;
+  onLogout: () => void;
+  userName: string;
+  isGuest: boolean;
+}) => (
+  <div
+    className={`fixed right-0 top-0 h-full bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl shadow-2xl transition-transform duration-300 z-50 ${
+      isOpen ? "translate-x-0" : "translate-x-full"
+    } w-80 border-l border-gray-200 dark:border-gray-700`}
+  >
+    <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 flex items-center justify-center shadow-xl">
+          <User className="w-7 h-7 text-white" />
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-gray-900 dark:text-white text-lg">{userName}</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Ù…Ø³ØªØ®Ø¯Ù… Ù†Ø´Ø· âœ¨</p>
+        </div>
+      </div>
+      <button
+        onClick={onNewChat}
+        className="w-full px-5 py-3.5 bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:from-purple-700 hover:via-pink-700 hover:to-blue-700 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-2"
+      >
+        <Plus className="w-5 h-5" />
+        <span>Ù…Ø­Ø§Ø¯Ø«Ø© Ø¬Ø¯ÙŠØ¯Ø©</span>
+      </button>
+    </div>
+
+    <div className="p-4 overflow-y-auto h-[calc(100%-250px)]">
+      <h3 className="text-sm font-bold text-gray-600 dark:text-gray-400 mb-4 px-2 flex items-center gap-2">
+        <Clock className="w-4 h-4" />
+        Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø§Øª Ø§Ù„Ø³Ø§Ø¨Ù‚Ø©
+      </h3>
+      <div className="space-y-2">
+        {conversations.map((conv) => (
+          <div 
+            key={conv.id}
+            className={`relative group ${currentConversationId === conv.id ? 'ring-2 ring-purple-400 dark:ring-purple-600' : ''}`}
+          >
+            <button
+              onClick={() => onSelectConversation(conv.id)}
+              className="w-full p-4 rounded-2xl bg-gray-50 dark:bg-gray-800 hover:bg-gradient-to-br hover:from-purple-50 hover:to-blue-50 dark:hover:from-purple-900/20 dark:hover:to-blue-900/20 transition-all duration-200 text-right border border-transparent hover:border-purple-200 dark:hover:border-purple-800 shadow-sm hover:shadow-md"
+            >
+              <p className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate mb-1">
+                {conv.title}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <MessageSquare className="w-3 h-3" />
+                {conv.messages.length} Ø±Ø³Ø§Ù„Ø©
+              </p>
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteConversation(conv.id);
+              }}
+              className="absolute top-2 left-2 p-2 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+              title="Ø­Ø°Ù Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø©"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl">
+      {isGuest ? (
+        <a
+          href="/auth/login"
+          className="w-full px-5 py-3.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-[1.02]"
+        >
+          <User className="w-5 h-5" />
+          <span>ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„</span>
+        </a>
+      ) : (
+        <button
+          onClick={onLogout}
+          className="w-full px-5 py-3.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-2xl font-bold shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2 transform hover:scale-[1.02]"
+        >
+          <LogOut className="w-5 h-5" />
+          <span>ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø®Ø±ÙˆØ¬</span>
+        </button>
+      )}
+    </div>
+  </div>
+);
+
+
+
+
+// ============================================
+// ðŸ” Ù†Ø¸Ø§Ù… Ø§Ù„Ø¨Ø­Ø« Ø§Ù„ÙƒØ§Ù…Ù„ Ø§Ù„Ù…Ø¯Ù…Ø¬
+// Google Search + Multi-Source + Cache + Usage Tracker
+// ============================================
+
+// ðŸ“ Types & Interfaces
+interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  content: string;
+  relevanceScore?: number;
+  displayLink?: string;
+  formattedUrl?: string;
+  thumbnail?: string;
+  author?: string;
+  duration?: string;
+  views?: string;
+  image?: {
+    contextLink?: string;
+    height?: number;
+    width?: number;
+    thumbnailLink?: string;
+  };
+}
+
+interface SearchResponse {
+  results: SearchResult[];
+  query: string;
+  totalResults: string | number;
+  searchTime: number;
+  source: string;
+}
+
+interface MultiSourceResponse {
+  query?: string;
+  primarySource?: {
+    source: string;
+    icon: string;
+    results: SearchResult[];
+  };
+  additionalSources?: Array<{
+    source: string;
+    icon: string;
+    results: SearchResult[];
+  }>;
+  // Ø¨Ù†ÙŠØ© Ø¨Ø¯ÙŠÙ„Ø© Ù„Ù†ØªØ§Ø¦Ø¬ Ù…Ø¨Ø§Ø´Ø±Ø©
+  google?: SearchResult[];
+  youtube?: SearchResult[];
+  wikipedia?: SearchResult[];
+  stackoverflow?: SearchResult[];
+  github?: SearchResult[];
+  totalResults: number;
+  searchTime: number;
+}
+
+interface GoogleSearchConfig {
+  apiKey: string;
+  searchEngineId: string;
+  language?: string;
+  country?: string;
+  safeSearch?: 'off' | 'medium' | 'high';
+  numResults?: number;
+}
+
+interface SearchOptions {
+  maxResults?: number;
+  timeout?: number;
+  recentOnly?: boolean;
+  exactMatch?: boolean;
+  fastMode?: boolean;
+  retries?: number;
+  smartSearch?: boolean; // Ø¬Ø¯ÙŠØ¯: Ù„Ù„Ø¨Ø­Ø« Ø§Ù„Ø°ÙƒÙŠ Ù…ØªØ¹Ø¯Ø¯ Ø§Ù„Ù…ØµØ§Ø¯Ø±
+}
+
+// âš™ï¸ Configuration
+const DEFAULT_CONFIG = {
+  language: 'ar',
+  country: 'sa',
+  safeSearch: 'medium' as const,
+  numResults: 5,
+  timeout: 10000,
+  fastTimeout: 3000,
+  maxRetries: 3,
+  fastRetries: 1
+};
+
+// ============================================
+// ðŸ’¾ Cache System
+// ============================================
+
+interface CacheEntry {
+  data: SearchResponse | MultiSourceResponse;
+  timestamp: number;
+}
+
+class SearchCache {
+  private cache: Map<string, CacheEntry>;
+  private maxAge: number;
+  private maxSize: number;
+
+  constructor(maxAge: number = 30 * 60 * 1000, maxSize: number = 200) {
+    this.cache = new Map();
+    this.maxAge = maxAge;
+    this.maxSize = maxSize;
+  }
+
+  private generateKey(query: string, options: any): string {
+    return `${query}_${options.smartSearch}_${options.maxResults}`;
+  }
+
+  set(query: string, options: any, data: SearchResponse | MultiSourceResponse): void {
+    const key = this.generateKey(query, options);
+    
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) this.cache.delete(firstKey);
+    }
+
+    this.cache.set(key, { data, timestamp: Date.now() });
+  }
+
+  get(query: string, options: any): SearchResponse | MultiSourceResponse | null {
+    const key = this.generateKey(query, options);
+    const entry = this.cache.get(key);
+
+    if (!entry) return null;
+
+    if (Date.now() - entry.timestamp > this.maxAge) {
+      this.cache.delete(key);
+      return null;
+    }
+
+    return entry.data;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+
+  getStats() {
+    return {
+      size: this.cache.size,
+      maxSize: this.maxSize,
+      maxAge: this.maxAge
+    };
+  }
+}
+
+const searchCache = new SearchCache();
+
+// ============================================
+// ðŸ“Š Usage Tracker
+// ============================================
+
+class UsageTracker {
+  private dailyUsage: Map<string, number>;
+  private maxDailyQueries: number;
+
+  constructor(maxDailyQueries: number = 100) {
+    this.dailyUsage = new Map();
+    this.maxDailyQueries = maxDailyQueries;
+  }
+
+  private getTodayKey(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
+  canSearch(): boolean {
+    const today = this.getTodayKey();
+    const usage = this.dailyUsage.get(today) || 0;
+    return usage < this.maxDailyQueries;
+  }
+
+  incrementUsage(): void {
+    const today = this.getTodayKey();
+    const current = this.dailyUsage.get(today) || 0;
+    this.dailyUsage.set(today, current + 1);
+  }
+
+  getUsage() {
+    const today = this.getTodayKey();
+    const used = this.dailyUsage.get(today) || 0;
+    return {
+      used,
+      remaining: this.maxDailyQueries - used,
+      limit: this.maxDailyQueries
+    };
+  }
+
+  resetDaily(): void {
+    const today = this.getTodayKey();
+    this.dailyUsage.clear();
+    this.dailyUsage.set(today, 0);
+  }
+}
+
+const usageTracker = new UsageTracker(100);
+
+// ============================================
+// ðŸŽ¯ Keywords & Detection
+// ============================================
+
+const SEARCH_KEYWORDS = [
+  'Ø§Ø¨Ø­Ø« Ø¹Ù†', 'Ø¯ÙˆØ± Ø¹Ù„Ù‰', 'Ø§Ø¨Ø­Ø« Ù„ÙŠ Ø¹Ù†', 'find me', 'search for',
+  'Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ø¹Ù†', 'Ø£Ø±ÙŠØ¯ Ù…Ø¹Ø±ÙØ©', 'Ø£Ø®Ø¨Ø±Ù†ÙŠ Ø¹Ù†', 'ÙˆØ¶Ø­ Ù„ÙŠ',
+  'Ø¢Ø®Ø± Ø£Ø®Ø¨Ø§Ø±', 'Ø£Ø­Ø¯Ø«', 'Ø¬Ø¯ÙŠØ¯ ÙÙŠ', 'Ù…Ø§ Ø§Ù„Ø¬Ø¯ÙŠØ¯', 'latest news',
+  'Ø£Ø®Ø¨Ø§Ø± Ø§Ù„ÙŠÙˆÙ…', 'Ø­Ø¯ÙŠØ« Ø¹Ù†', 'Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ø­Ø¯ÙŠØ«Ø© Ø¹Ù†', 'Ø§Ù„Ø£Ø®Ø¨Ø§Ø±',
+  'Ù‚Ø§Ø±Ù† Ø¨ÙŠÙ†', 'Ù…Ù‚Ø§Ø±Ù†Ø©', 'Ø§Ù„ÙØ±Ù‚ Ø¨ÙŠÙ†', 'Ø£ÙŠÙ‡Ù…Ø§ Ø£ÙØ¶Ù„',
+  'Ø³Ø¹Ø±', 'ÙƒÙ… Ø³Ø¹Ø±', 'ÙƒÙ… ÙŠÙƒÙ„Ù', 'ØªÙƒÙ„ÙØ©', 'price', 'cost',
+  'Ù…ØªÙ‰', 'ØªØ§Ø±ÙŠØ®', 'Ù…ÙˆØ¹Ø¯', 'when', 'date',
+  'Ø¥Ø­ØµØ§Ø¦ÙŠØ§Øª', 'Ø£Ø±Ù‚Ø§Ù…', 'Ø¨ÙŠØ§Ù†Ø§Øª', 'statistics', 'data',
+  'Ø§Ù„Ø·Ù‚Ø³', 'weather', 'Ø§Ù„Ø£Ø³Ù‡Ù…', 'stock', 'Ø§Ù„Ø¨ÙˆØ±ØµØ©'
+];
+
+const EXCLUDE_PATTERNS = [
+  'Ù…Ø±Ø­Ø¨Ø§', 'Ù…Ø±Ø­Ø¨Ø§Ù‹', 'Ø£Ù‡Ù„Ø§', 'Ø³Ù„Ø§Ù…', 'Ø§Ù„Ø³Ù„Ø§Ù… Ø¹Ù„ÙŠÙƒÙ…',
+  'ØµØ¨Ø§Ø­ Ø§Ù„Ø®ÙŠØ±', 'Ù…Ø³Ø§Ø¡ Ø§Ù„Ø®ÙŠØ±', 'Ø´ÙƒØ±Ø§', 'Ø´ÙƒØ±Ø§Ù‹',
+  'hello', 'hi', 'hey', 'thanks', 'bye',
+  'ÙƒÙŠÙ Ø­Ø§Ù„Ùƒ', 'ÙƒÙŠÙÙƒ', 'how are you', 'Ù…Ø§ Ø§Ø³Ù…Ùƒ'
+];
+
+// Ø£Ù†Ù…Ø§Ø· Ø§Ù„Ù…ØµØ§Ø¯Ø± Ø§Ù„Ù…ØªØ®ØµØµØ©
+const SOURCE_PATTERNS = {
+  youtube: {
+    keywords: ['ÙÙŠØ¯ÙŠÙˆ', 'Ø´Ø±Ø­', 'ØªØ¹Ù„ÙŠÙ…', 'Ø¯Ø±Ø³', 'ÙƒÙˆØ±Ø³', 'video', 'tutorial', 'how to', 'ÙƒÙŠÙ Ø£Ø³ÙˆÙŠ'],
+    icon: 'ðŸŽ¥',
+    priority: 1
+  },
+  wikipedia: {
+    keywords: ['Ù…Ù† Ù‡Ùˆ', 'Ù…Ø§ Ù‡Ùˆ', 'Ù…Ø§ Ù‡ÙŠ', 'ØªØ¹Ø±ÙŠÙ', 'Ù…Ø¹Ù†Ù‰', 'who is', 'what is', 'define', 'ØªØ§Ø±ÙŠØ®'],
+    icon: 'ðŸ“š',
+    priority: 2
+  },
+  stackoverflow: {
+    keywords: ['Ø®Ø·Ø£', 'error', 'bug', 'ÙƒÙˆØ¯', 'code', 'Ø¨Ø±Ù…Ø¬Ø©', 'programming', 'python', 'javascript'],
+    icon: 'ðŸ’»',
+    priority: 1
+  },
+  github: {
+    keywords: ['Ù…Ø´Ø±ÙˆØ¹', 'project', 'repository', 'repo', 'source code', 'open source'],
+    icon: 'âš™ï¸',
+    priority: 2
+  },
+  news: {
+    keywords: ['Ø£Ø®Ø¨Ø§Ø±', 'Ø®Ø¨Ø±', 'Ø¬Ø¯ÙŠØ¯', 'Ø£Ø­Ø¯Ø«', 'Ø¢Ø®Ø±', 'news', 'latest', 'breaking'],
+    icon: 'ðŸ“°',
+    priority: 1
+  }
+};
+
+/**
+ * ðŸ¤” Ù‡Ù„ Ø§Ù„Ø³Ø¤Ø§Ù„ ÙŠØ­ØªØ§Ø¬ Ø¨Ø­Ø«ØŸ
+ */
+export function needsSearch(query: string): boolean {
+  const lowerQuery = query.toLowerCase().trim();
+  
+  if (lowerQuery.length < 8) return false;
+  if (EXCLUDE_PATTERNS.some(p => lowerQuery.includes(p))) return false;
+  
+  const hasKeywords = SEARCH_KEYWORDS.some(k => lowerQuery.includes(k.toLowerCase()));
+  
+  const hasSearchPatterns = [
+    /\b(ÙÙŠ|Ù…Ù†|Ø­ÙˆÙ„|Ø¹Ù†|about|of)\s+\w{4,}/g,
+    /\b(ÙƒÙŠÙ|how)\s+(ÙŠÙ…ÙƒÙ†|can)\s+\w+/g,
+    /\b(Ù…Ø§ Ù‡Ùˆ|what is)\s+\w{3,}/g,
+    /\d{4}|\b(Ø¹Ø§Ù…|Ø³Ù†Ø©|year)\b/g,
+  ].some(pattern => pattern.test(lowerQuery));
+  
+  const isLongQuery = lowerQuery.length > 15;
+  
+  return hasKeywords || hasSearchPatterns || isLongQuery;
+}
+
+/**
+ * ÙƒØ´Ù Ø§Ù„Ù…ØµØ¯Ø± Ø§Ù„Ù…Ù†Ø§Ø³Ø¨
+ */
+function detectBestSource(query: string): string[] {
+  const lowerQuery = query.toLowerCase();
+  const sources: Array<{ name: string; priority: number; matches: number }> = [];
+  
+  for (const [sourceName, config] of Object.entries(SOURCE_PATTERNS)) {
+    const matches = config.keywords.filter(k => lowerQuery.includes(k.toLowerCase())).length;
+    
+    if (matches > 0) {
+      sources.push({ name: sourceName, priority: config.priority, matches });
+    }
+  }
+  
+  sources.sort((a, b) => {
+    if (a.matches !== b.matches) return b.matches - a.matches;
+    return a.priority - b.priority;
+  });
+  
+  // âœ¨ Ø¯Ø§Ø¦Ù…Ø§Ù‹ Ù†Ø¶ÙŠÙ Wikipedia Ùˆ YouTube ÙƒÙ…ØµØ§Ø¯Ø± Ø¥Ø¶Ø§ÙÙŠØ© (Ù„Ù„Ø¨Ø­Ø« Ø§Ù„Ø´Ø§Ù…Ù„)
+  const detectedSources = sources.slice(0, 2).map(s => s.name);
+  
+  // Ø¥Ø°Ø§ Ù…Ø§ ÙÙŠ Ù…ØµØ§Ø¯Ø± Ù…Ø­Ø¯Ø¯Ø©ØŒ Ù†Ø¶ÙŠÙ Wikipedia Ùˆ YouTube ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹
+  if (detectedSources.length === 0) {
+    return ['wikipedia', 'youtube'];
+  }
+  
+  // Ù†ØªØ£ÙƒØ¯ Ø¥Ù† Wikipedia Ùˆ YouTube Ù…ÙˆØ¬ÙˆØ¯Ø©
+  if (!detectedSources.includes('wikipedia')) {
+    detectedSources.push('wikipedia');
+  }
+  if (!detectedSources.includes('youtube') && detectedSources.length < 3) {
+    detectedSources.push('youtube');
+  }
+  
+  return detectedSources.slice(0, 3); // Ø£Ù‚ØµÙ‰ 3 Ù…ØµØ§Ø¯Ø± Ø¥Ø¶Ø§ÙÙŠØ©
+}
+
+// ============================================
+// ðŸ” Google Search
+// ============================================
+
+async function googleSearch(query: string, config: GoogleSearchConfig): Promise<SearchResponse> {
+  const startTime = Date.now();
+
+  const params = new URLSearchParams({
+    key: config.apiKey,
+    cx: config.searchEngineId,
+    q: query,
+    num: (config.numResults || 5).toString(),
+    lr: `lang_${config.language || 'ar'}`,
+    gl: config.country || 'sa',
+    safe: config.safeSearch || 'medium'
+  });
+
+  const url = `https://www.googleapis.com/customsearch/v1?${params.toString()}`;
+  console.log('ðŸ” Google Search:', query);
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': 'application/json' }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  return {
+    results: (data.items || []).map((item: any) => ({
+      title: item.title || 'Ø¨Ø¯ÙˆÙ† Ø¹Ù†ÙˆØ§Ù†',
+      url: item.link || '',
+      snippet: item.snippet || '',
+      content: item.snippet || '',
+      displayLink: item.displayLink,
+      relevanceScore: 0.9,
+      image: item.pagemap?.cse_image?.[0]
+    })),
+    query,
+    totalResults: data.searchInformation?.totalResults || '0',
+    searchTime: Date.now() - startTime,
+    source: 'Google Custom Search'
+  };
+}
+
+async function googleSearchWithRetry(
+  query: string,
+  config: GoogleSearchConfig,
+  maxRetries: number = 3
+): Promise<SearchResponse> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await googleSearch(query, config);
+    } catch (error) {
+      console.error(`âŒ Ù…Ø­Ø§ÙˆÙ„Ø© ${attempt} ÙØ´Ù„Øª:`, error);
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error('ÙØ´Ù„ Ø§Ù„Ø¨Ø­Ø«');
+}
+
+// ============================================
+// ðŸŽ¥ Multi-Source Search Functions
+// ============================================
+
+async function searchYouTube(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) return [];
+  
+  try {
+    // ØªØ­Ø³ÙŠÙ† Ø§Ù„Ù€ query
+    let enhancedQuery = query
+      .replace(/Ø§Ø¨Ø­Ø«\s+(Ø¹Ù†|Ù„ÙŠ|ÙÙŠ)/g, '')
+      .replace(/Ø§Ù„ÙŠÙˆÙ…|Ø§Ù„Ø¢Ù†|Ø­Ø§Ù„ÙŠØ§Ù‹/g, '')
+      .trim();
+    
+    // Ø¥Ø¶Ø§ÙØ© ÙƒÙ„Ù…Ø§Øª Ù…Ø³Ø§Ø¹Ø¯Ø© Ø¨Ù†Ø§Ø¡Ù‹ Ø¹Ù„Ù‰ Ù†ÙˆØ¹ Ø§Ù„Ø¨Ø­Ø«
+    if (query.match(/Ø±ÙŠØ§Ø¶|ÙƒØ±Ø©|Ù…Ø¨Ø§Ø±Ø§Ø©|ÙØ±ÙŠÙ‚|Ù‡Ø¯Ù|Ø¨Ø·ÙˆÙ„Ø©/i)) {
+      enhancedQuery += ' Ø±ÙŠØ§Ø¶Ø©';
+    } else if (query.match(/Ø·Ø¨Ø®|ÙˆØµÙØ©|Ø·Ø¹Ø§Ù…|Ø£ÙƒÙ„/i)) {
+      enhancedQuery += ' Ø´Ø±Ø­';
+    } else if (query.match(/ÙƒÙŠÙ|Ø·Ø±ÙŠÙ‚Ø©|Ø®Ø·ÙˆØ§Øª/i)) {
+      enhancedQuery += ' ØªØ¹Ù„ÙŠÙ… Ø´Ø±Ø­';
+    }
+    
+    const params = new URLSearchParams({
+      part: 'snippet',
+      q: enhancedQuery,
+      maxResults: (maxResults * 2).toString(), // Ø¶Ø¹Ù Ø§Ù„Ø¹Ø¯Ø¯ Ù„Ù„ÙÙ„ØªØ±Ø©
+      type: 'video',
+      key: apiKey,
+      relevanceLanguage: 'ar'
+    });
+    
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    
+    // ÙÙ„ØªØ±Ø© Ø§Ù„Ù†ØªØ§Ø¦Ø¬
+    const searchTerms = query.toLowerCase();
+    const filtered = data.items
+      ?.filter((item: any) => {
+        const title = item.snippet.title.toLowerCase();
+        const description = item.snippet.description.toLowerCase();
+        
+        // ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ø§Ø±ØªØ¨Ø§Ø·
+        return searchTerms.split(' ').some(term => 
+          term.length > 3 && (title.includes(term) || description.includes(term))
+        );
+      })
+      .slice(0, maxResults) // Ø§Ù„Ø¹Ø¯Ø¯ Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ø¨Ø¹Ø¯ Ø§Ù„ÙÙ„ØªØ±Ø©
+      .map((item: any) => ({
+        title: item.snippet.title,
+        url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+        snippet: item.snippet.description,
+        content: item.snippet.description,
+        thumbnail: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url, // Ù†Ø³ØªØ®Ø¯Ù… high Ù„Ù„Ø¬ÙˆØ¯Ø© Ø§Ù„Ø¹Ø§Ù„ÙŠØ©
+        author: item.snippet.channelTitle,
+        relevanceScore: 0.9
+      })) || [];
+    
+    return filtered;
+  } catch (error) {
+    console.error('Ø®Ø·Ø£ YouTube:', error);
+    return [];
+  }
+}
+
+async function searchWikipedia(query: string, maxResults: number = 3): Promise<SearchResult[]> {
+  try {
+    // ØªØ­Ø³ÙŠÙ† Ø§Ù„Ù€ query Ù„Ù„Ø¨Ø­Ø« Ø§Ù„Ø£ÙØ¶Ù„
+    const cleanQuery = query
+      .replace(/Ø§Ø¨Ø­Ø«\s+(Ø¹Ù†|Ù„ÙŠ|ÙÙŠ)/g, '')
+      .replace(/Ø§Ù„ÙŠÙˆÙ…|Ø§Ù„Ø¢Ù†|Ø­Ø§Ù„ÙŠØ§Ù‹/g, '')
+      .trim();
+    
+    const params = new URLSearchParams({
+      action: 'query',
+      list: 'search',
+      srsearch: cleanQuery,
+      format: 'json',
+      srlimit: (maxResults * 2).toString(), // Ù†Ø¬ÙŠØ¨ Ø¶Ø¹Ù Ø§Ù„Ø¹Ø¯Ø¯ Ù„Ù„ÙÙ„ØªØ±Ø©
+      origin: '*'
+    });
+    
+    const response = await fetch(`https://ar.wikipedia.org/w/api.php?${params.toString()}`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    
+    // ÙÙ„ØªØ±Ø© Ø§Ù„Ù†ØªØ§Ø¦Ø¬ ØºÙŠØ± Ø§Ù„Ù…Ø±ØªØ¨Ø·Ø©
+    const filtered = data.query?.search
+      ?.filter((item: any) => {
+        const title = item.title.toLowerCase();
+        const snippet = item.snippet.toLowerCase();
+        const searchTerms = cleanQuery.toLowerCase();
+        
+        // ØªØ­Ù‚Ù‚ Ù…Ù† ÙˆØ¬ÙˆØ¯ ÙƒÙ„Ù…Ø§Øª Ø§Ù„Ø¨Ø­Ø« ÙÙŠ Ø§Ù„Ø¹Ù†ÙˆØ§Ù† Ø£Ùˆ Ø§Ù„ÙˆØµÙ
+        return title.includes(searchTerms) || 
+               snippet.includes(searchTerms) ||
+               searchTerms.split(' ').some(term => 
+                 term.length > 3 && (title.includes(term) || snippet.includes(term))
+               );
+      })
+      .slice(0, maxResults) // Ø®Ø° Ø§Ù„Ø¹Ø¯Ø¯ Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ø¨Ø¹Ø¯ Ø§Ù„ÙÙ„ØªØ±Ø©
+      .map((item: any) => ({
+        title: item.title,
+        url: `https://ar.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet: item.snippet.replace(/<[^>]*>/g, ''),
+        content: item.snippet.replace(/<[^>]*>/g, ''),
+        relevanceScore: 0.85
+      })) || [];
+    
+    return filtered;
+  } catch (error) {
+    console.error('Ø®Ø·Ø£ Wikipedia:', error);
+    return [];
+  }
+}
+
+async function searchStackOverflow(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+  try {
+    const params = new URLSearchParams({
+      order: 'desc',
+      sort: 'relevance',
+      intitle: query,
+      site: 'stackoverflow',
+      pagesize: maxResults.toString()
+    });
+    
+    const response = await fetch(`https://api.stackexchange.com/2.3/search/advanced?${params.toString()}`);
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    
+    return data.items?.map((item: any) => ({
+      title: item.title,
+      url: item.link,
+      snippet: `${item.answer_count} Ø¥Ø¬Ø§Ø¨Ø© â€¢ ${item.score} Ù†Ù‚Ø·Ø©`,
+      content: item.title,
+      author: item.owner?.display_name,
+      views: item.view_count?.toString(),
+      relevanceScore: 0.8
+    })) || [];
+  } catch (error) {
+    console.error('Ø®Ø·Ø£ Stack Overflow:', error);
+    return [];
+  }
+}
+
+async function searchGitHub(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+  try {
+    const params = new URLSearchParams({
+      q: query,
+      sort: 'stars',
+      order: 'desc',
+      per_page: maxResults.toString()
+    });
+    
+    const headers: any = { 'Accept': 'application/vnd.github.v3+json' };
+    const token = process.env.GITHUB_TOKEN;
+    if (token) headers['Authorization'] = `token ${token}`;
+    
+    const response = await fetch(`https://api.github.com/search/repositories?${params.toString()}`, { headers });
+    if (!response.ok) return [];
+    
+    const data = await response.json();
+    
+    return data.items?.map((item: any) => ({
+      title: item.full_name,
+      url: item.html_url,
+      snippet: item.description || 'Ù„Ø§ ÙŠÙˆØ¬Ø¯ ÙˆØµÙ',
+      content: item.description || '',
+      author: item.owner?.login,
+      views: `â­ ${item.stargazers_count}`,
+      relevanceScore: 0.8
+    })) || [];
+  } catch (error) {
+    console.error('Ø®Ø·Ø£ GitHub:', error);
+    return [];
+  }
+}
+
+// ============================================
+// ðŸ§  Smart Multi-Source Search
+// ============================================
+
+async function smartMultiSourceSearch(
+  query: string, 
+  maxResults: number = 5,
+  searchMode: 'normal' | 'advanced' = 'advanced' // Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ø¬Ø¯ÙŠØ¯
+): Promise<MultiSourceResponse> {
+  const startTime = Date.now();
+  
+  console.log(`ðŸ§  Ø¨Ø­Ø« Ø°ÙƒÙŠ (${searchMode})...`);
+  
+  const detectedSources = detectBestSource(query);
+  console.log('ðŸŽ¯ Ø§Ù„Ù…ØµØ§Ø¯Ø± Ø§Ù„Ù…ÙƒØªØ´ÙØ©:', detectedSources);
+  
+  // ðŸ” Ø§Ù„Ø¨Ø­Ø« ÙÙŠ Google (Ù…ØµØ¯Ø± Ø±Ø¦ÙŠØ³ÙŠ)
+  const googleKey = process.env.GOOGLE_SEARCH_API_KEY;
+  const googleCx = process.env.GOOGLE_SEARCH_ENGINE_ID;
+  
+  let googleResults: SearchResult[] = [];
+  
+  // ØªØ­Ø¯ÙŠØ¯ Ø¹Ø¯Ø¯ Ù†ØªØ§Ø¦Ø¬ Google Ø­Ø³Ø¨ Ø§Ù„ÙˆØ¶Ø¹
+  const googleCount = searchMode === 'normal' ? 3 : 5;
+  
+  if (googleKey && googleCx) {
+    try {
+      console.log(`ðŸ” Ø¬Ø§Ø±Ù Ø§Ù„Ø¨Ø­Ø« ÙÙŠ Google (${googleCount} Ù†ØªØ§Ø¦Ø¬)...`);
+      const googleResponse = await googleSearch(query, {
+        apiKey: googleKey,
+        searchEngineId: googleCx,
+        numResults: googleCount,
+        language: DEFAULT_CONFIG.language,
+        country: DEFAULT_CONFIG.country,
+        safeSearch: DEFAULT_CONFIG.safeSearch
+      });
+      googleResults = googleResponse.results;
+      console.log(`âœ… Google: ${googleResults.length} Ù†ØªÙŠØ¬Ø©`);
+    } catch (error) {
+      console.error('âŒ Ø®Ø·Ø£ ÙÙŠ Google:', error);
+    }
+  }
+  
+  // ðŸš« ÙÙŠ Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ø¹Ø§Ø¯ÙŠ: Ù†ØªØ§Ø¦Ø¬ Google ÙÙ‚Ø·
+  if (searchMode === 'normal') {
+    return {
+      google: googleResults,
+      youtube: [],
+      wikipedia: [],
+      stackoverflow: [],
+      github: [],
+      totalResults: googleResults.length,
+      searchTime: Date.now() - startTime
+    };
+  }
+  
+  // ðŸŽ¯ ÙÙŠ Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ù…ØªÙ‚Ø¯Ù…: Ù†Ø¨Ø­Ø« ÙÙŠ Ø§Ù„Ù…ØµØ§Ø¯Ø± Ø§Ù„Ø£Ø®Ø±Ù‰
+  const searchPromises: Promise<SearchResult[]>[] = [];
+  const sourceNames: string[] = [];
+  const sourceIcons: string[] = [];
+  
+  for (const source of detectedSources) {
+    switch (source) {
+      case 'youtube':
+        searchPromises.push(searchYouTube(query, 3)); // 3 ÙÙŠØ¯ÙŠÙˆÙ‡Ø§Øª
+        sourceNames.push('YouTube');
+        sourceIcons.push('ðŸŽ¥');
+        break;
+      case 'wikipedia':
+        searchPromises.push(searchWikipedia(query, 2)); // Ù…Ù‚Ø§Ù„ØªÙŠÙ†
+        sourceNames.push('ÙˆÙŠÙƒÙŠØ¨ÙŠØ¯ÙŠØ§');
+        sourceIcons.push('ðŸ“š');
+        break;
+      case 'stackoverflow':
+        searchPromises.push(searchStackOverflow(query, maxResults));
+        sourceNames.push('Stack Overflow');
+        sourceIcons.push('ðŸ’»');
+        break;
+      case 'github':
+        searchPromises.push(searchGitHub(query, maxResults));
+        sourceNames.push('GitHub');
+        sourceIcons.push('âš™ï¸');
+        break;
+    }
+  }
+  
+  const results = await Promise.all(searchPromises);
+  const validResults = results.map((r, i) => ({
+    source: sourceNames[i],
+    icon: sourceIcons[i],
+    results: r
+  })).filter(r => r.results.length > 0);
+  
+  console.log(`âœ… ØªÙ… Ø§Ù„Ø¨Ø­Ø« ÙÙŠ ${validResults.length} Ù…ØµØ¯Ø± Ø¥Ø¶Ø§ÙÙŠ`);
+  
+  // ðŸ“Š Google Ù‡Ùˆ Ø§Ù„Ù…ØµØ¯Ø± Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ Ø¯Ø§Ø¦Ù…Ø§Ù‹
+  let primarySource = {
+    source: 'Google',
+    icon: 'ðŸ”',
+    results: googleResults
+  };
+  
+  const additionalSources = validResults;
+  
+  if (!primarySource.results.length && !additionalSources.length) {
+    // Fallback Ù†Ù‡Ø§Ø¦ÙŠ Ø¥Ø°Ø§ ÙƒÙ„ Ø§Ù„Ù…ØµØ§Ø¯Ø± ÙØ´Ù„Øª
+    primarySource = {
+      source: 'Web',
+      icon: 'ðŸŒ',
+      results: [{
+        title: `Ù†ØªØ§Ø¦Ø¬ Ø¹Ù†: ${query}`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+        snippet: 'Ø§Ø¨Ø­Ø« ÙÙŠ Google Ù„Ù„Ù…Ø²ÙŠØ¯ Ù…Ù† Ø§Ù„Ù†ØªØ§Ø¦Ø¬',
+        content: '',
+        relevanceScore: 0.5
+      }]
+    };
+  }
+  
+  return {
+    query,
+    primarySource,
+    additionalSources,
+    totalResults: primarySource.results.length + additionalSources.reduce((sum, s) => sum + s.results.length, 0),
+    searchTime: Date.now() - startTime
+  };
+}
+
+// ============================================
+// ðŸŒ Main Search Function
+// ============================================
+
+export async function searchWeb(query: string, options: SearchOptions = {}): Promise<SearchResponse | MultiSourceResponse> {
+  const { 
+    maxResults = 5,
+    fastMode = false,
+    smartSearch = false, // Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ø°ÙƒÙŠ Ù…ØªØ¹Ø¯Ø¯ Ø§Ù„Ù…ØµØ§Ø¯Ø±
+    recentOnly = false,
+    exactMatch = false
+  } = options;
+  
+  const timeout = fastMode ? DEFAULT_CONFIG.fastTimeout : (options.timeout || DEFAULT_CONFIG.timeout);
+  const retries = fastMode ? DEFAULT_CONFIG.fastRetries : (options.retries || DEFAULT_CONFIG.maxRetries);
+  const startTime = Date.now();
+  
+  // ØªØ­Ù‚Ù‚ Ù…Ù† Cache
+  const cached = searchCache.get(query, options);
+  if (cached) {
+    console.log('âœ… Ù…Ù† Cache');
+    return cached;
+  }
+  
+  // Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ø°ÙƒÙŠ Ù…ØªØ¹Ø¯Ø¯ Ø§Ù„Ù…ØµØ§Ø¯Ø±
+  if (smartSearch) {
+    const result = await smartMultiSourceSearch(query, maxResults);
+    searchCache.set(query, options, result);
+    return result;
+  }
+  
+  // Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ø¹Ø§Ø¯ÙŠ ÙÙŠ Google
+  const canUseGoogle = usageTracker.canSearch();
+  
+  if (canUseGoogle) {
+    const apiKey = process.env.GOOGLE_SEARCH_API_KEY;
+    const engineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (apiKey && engineId) {
+      try {
+        console.log('ðŸ” Google Search...');
+        usageTracker.incrementUsage();
+        
+        let modifiedQuery = query;
+        if (recentOnly) modifiedQuery += ` after:${new Date().getFullYear() - 1}`;
+        if (exactMatch) modifiedQuery = `"${query}"`;
+        
+        const config: GoogleSearchConfig = {
+          apiKey,
+          searchEngineId: engineId,
+          ...DEFAULT_CONFIG,
+          numResults: maxResults
+        };
+
+        const result = await googleSearchWithRetry(modifiedQuery, config, retries);
+        searchCache.set(query, options, result);
+        return result;
+
+      } catch (error) {
+        console.warn('âš ï¸ Google ÙØ´Ù„:', error);
+      }
+    }
+  }
+  
+  // Fallback
+  return {
+    results: [{
+      title: `Ù†ØªØ§Ø¦Ø¬ Ø¹Ù†: ${query}`,
+      url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+      snippet: 'Ù„Ù„Ù…Ø²ÙŠØ¯ Ù…Ù† Ø§Ù„Ù†ØªØ§Ø¦Ø¬ØŒ Ø§Ø¨Ø­Ø« ÙÙŠ Google',
+      content: '',
+      relevanceScore: 0.5
+    }],
+    query,
+    totalResults: 1,
+    searchTime: Date.now() - startTime,
+    source: 'Fallback'
+  };
+}
+
+// ============================================
+// ðŸŽ¨ Format Results
+// ============================================
+
+export function formatSearchResults(response: SearchResponse | MultiSourceResponse): string {
+  // ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ù†ÙˆØ¹ - Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ù…ØªÙ‚Ø¯Ù… Ø£Ùˆ Ø§Ù„Ø¹Ø§Ø¯ÙŠ
+  if ('primarySource' in response || 'google' in response) {
+    return formatMultiSourceResults(response);
+  }
+  
+  return formatGoogleResults(response as SearchResponse);
+}
+
+function formatGoogleResults(response: SearchResponse): string {
+  const { results, query, source, totalResults, searchTime } = response;
+  
+  if (!results || results.length === 0) {
+    return `Ø¹Ø°Ø±Ø§Ù‹ØŒ Ù„Ù… Ø£Ø¬Ø¯ Ù†ØªØ§Ø¦Ø¬ Ø¹Ù† "${query}" ðŸ”`;
+  }
+  
+  let formatted = `ðŸ” **Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø¨Ø­Ø« Ø¹Ù†: "${query}"**\n\n`;
+  
+  if (typeof totalResults === 'string' && totalResults !== '0') {
+    const total = parseInt(totalResults);
+    if (!isNaN(total)) formatted += `ðŸ“Š **${total.toLocaleString('ar')}** Ù†ØªÙŠØ¬Ø©`;
+  }
+  
+  formatted += ` ÙÙŠ ${(searchTime / 1000).toFixed(2)} Ø«Ø§Ù†ÙŠØ©\n`;
+  formatted += `ðŸ”Ž Ø§Ù„Ù…ØµØ¯Ø±: **${source}**\n\n---\n\n`;
+  
+  results.forEach((r, i) => {
+    formatted += `### ${i + 1}. ${r.title}\n\n`;
+    if (r.displayLink) formatted += `ðŸŒ **${r.displayLink}**\n\n`;
+    formatted += `${r.snippet}\n\n`;
+    formatted += `> [ðŸ”— **Ø§ÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø·**](${r.url})\n\n---\n\n`;
+  });
+  
+  if (source.includes('Google')) {
+    const usage = usageTracker.getUsage();
+    formatted += `\nðŸ“Š Ø§Ø³ØªØ®Ø¯Ø§Ù… API: ${usage.used}/${usage.limit} (Ù…ØªØ¨Ù‚ÙŠ: ${usage.remaining})\n\n`;
+  }
+  
+  formatted += `ðŸ’¡ ØªØ¨ÙŠ ØªÙØ§ØµÙŠÙ„ Ø£ÙƒØ«Ø±ØŸ ðŸ˜Š`;
+  return formatted;
+}
+
+function formatMultiSourceResults(response: MultiSourceResponse): string {
+  const { query, primarySource, additionalSources, searchTime } = response;
+  
+  // Ø§Ù„ØªØ¹Ø§Ù…Ù„ Ù…Ø¹ Ø§Ù„Ø¨Ù†ÙŠØ© Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø© (Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ø¹Ø§Ø¯ÙŠ)
+  if (!primarySource && response.google) {
+    let formatted = `ðŸ” **Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø¨Ø­Ø«: "${query}"**\n\n`;
+    formatted += `â±ï¸ ${(searchTime / 1000).toFixed(2)} Ø«Ø§Ù†ÙŠØ© â€¢ ðŸ“Š ${response.totalResults} Ù†ØªÙŠØ¬Ø©\n\n---\n\n`;
+    
+    response.google.slice(0, 3).forEach((r, i) => {
+      formatted += `### ${i + 1}. ${r.title}\n\n`;
+      if (r.displayLink) formatted += `ðŸŒ **${r.displayLink}**\n\n`;
+      if (r.snippet) formatted += `${r.snippet}\n\n`;
+      formatted += `> [ðŸ”— **Ø§ÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø·**](${r.url})\n\n`;
+    });
+    
+    formatted += `ðŸ’¡ ØªØ¨ÙŠ ØªÙØ§ØµÙŠÙ„ Ø£ÙƒØ«Ø±ØŸ ðŸ˜Š`;
+    return formatted;
+  }
+  
+  // Ø§Ù„ØªØ¹Ø§Ù…Ù„ Ù…Ø¹ Ø§Ù„Ø¨Ù†ÙŠØ© Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø© (Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ù…ØªÙ‚Ø¯Ù…)
+  if (!primarySource || !additionalSources) {
+    return `Ù„Ù… ÙŠØªÙ… Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ Ù†ØªØ§Ø¦Ø¬`;
+  }
+  
+  let formatted = `ðŸ§  **Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø¨Ø­Ø« Ø§Ù„Ø°ÙƒÙŠ: "${query}"**\n\n`;
+  formatted += `â±ï¸ ${(searchTime / 1000).toFixed(2)} Ø«Ø§Ù†ÙŠØ© â€¢ ðŸ“Š ${1 + additionalSources.length} Ù…ØµØ¯Ø±\n\n---\n\n`;
+  
+  // Ø§Ù„Ù…ØµØ¯Ø± Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ
+  formatted += `### ${primarySource.icon} **${primarySource.source}** (Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ)\n\n`;
+  
+  primarySource.results.slice(0, 5).forEach((r, i) => {
+    formatted += `### ${i + 1}. ${r.title}\n\n`;
+    if (r.displayLink) formatted += `ðŸŒ **${r.displayLink}**\n\n`;
+    if (r.author) formatted += `ðŸ‘¤ ${r.author} `;
+    if (r.views) formatted += `â€¢ ðŸ‘ï¸ ${r.views}`;
+    if (r.author || r.views) formatted += `\n\n`;
+    if (r.snippet) formatted += `${r.snippet}\n\n`;
+    formatted += `> [ðŸ”— **Ø§ÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø·**](${r.url})\n\n`;
+  });
+  
+  formatted += `---\n\n`;
+  
+  // Ø§Ù„Ù…ØµØ§Ø¯Ø± Ø§Ù„Ø¥Ø¶Ø§ÙÙŠØ©
+  if (additionalSources.length > 0) {
+    formatted += `### ðŸ“š **Ù…ØµØ§Ø¯Ø± Ø¥Ø¶Ø§ÙÙŠØ©:**\n\n`;
+    
+    additionalSources.forEach(src => {
+      if (src.results.length > 0) {
+        formatted += `#### ${src.icon} **${src.source}**\n\n`;
+        
+        src.results.slice(0, 3).forEach((r, i) => {
+          // Ø¹Ø±Ø¶ Ù…ØµØºØ± ÙÙŠØ¯ÙŠÙˆ Ø§Ù„ÙŠÙˆØªÙŠÙˆØ¨
+          if (r.thumbnail && src.source === 'YouTube') {
+            formatted += `[![${r.title}](${r.thumbnail})](${r.url} "${r.title}")\n\n`;
+            formatted += `**${i + 1}. ${r.title}**\n\n`;
+          } else {
+            formatted += `**${i + 1}. ${r.title}**\n\n`;
+          }
+          
+          if (r.author) formatted += `ðŸ‘¤ ${r.author}\n\n`;
+          if (r.displayLink && !r.thumbnail) formatted += `ðŸŒ **${r.displayLink}**\n\n`;
+          if (r.snippet) formatted += `${r.snippet}\n\n`;
+          formatted += `> [ðŸ”— **Ø§ÙØªØ­ Ø§Ù„Ø±Ø§Ø¨Ø·**](${r.url})\n\n`;
+        });
+        
+        formatted += `\n`;
+      }
+    });
+    
+    formatted += `---\n\n`;
+  }
+  
+  formatted += `ðŸ’¡ ØªØ¨ÙŠ ØªÙØ§ØµÙŠÙ„ Ù…Ù† Ù…ØµØ¯Ø± Ù…Ø¹ÙŠÙ†ØŸ ðŸ˜Š`;
+  return formatted;
+}
+
+// ============================================
+// ðŸ› ï¸ Utility & Helper Functions
+// ============================================
+
+export function getCacheStats() {
+  return searchCache.getStats();
+}
+
+export function clearCache() {
+  searchCache.clear();
+}
+
+export function getUsageStats() {
+  return usageTracker.getUsage();
+}
+
+export function resetUsage() {
+  usageTracker.resetDaily();
+}
+
+export async function fastSearch(query: string, maxResults: number = 3): Promise<SearchResponse | MultiSourceResponse> {
+  return searchWeb(query, { maxResults, fastMode: true });
+}
+
+export async function advancedSearch(query: string, options?: Omit<SearchOptions, 'fastMode'>): Promise<SearchResponse | MultiSourceResponse> {
+  return searchWeb(query, { ...options, fastMode: false });
+}
+
+export async function smartSearch(query: string, maxResults: number = 5): Promise<MultiSourceResponse> {
+  const result = await searchWeb(query, { maxResults, smartSearch: true });
+  return result as MultiSourceResponse;
+}
+
+export async function protectedSearch(query: string, options?: SearchOptions): Promise<string> {
+  if (!usageTracker.canSearch()) {
+    const usage = usageTracker.getUsage();
+    return `Ø¹Ø°Ø±Ø§Ù‹ØŒ ÙˆØµÙ„Øª Ù„Ù„Ø­Ø¯ Ø§Ù„Ø£Ù‚ØµÙ‰! ðŸ“Š\n\nØ§Ø³ØªØ®Ø¯Ù…Øª ${usage.used}/${usage.limit}.\nØ­Ø§ÙˆÙ„ Ø¨ÙƒØ±Ø©! ðŸ˜Š`;
+  }
+
+  try {
+    const result = await searchWeb(query, options);
+    return formatSearchResults(result);
+  } catch (error) {
+    console.error('âŒ Ø®Ø·Ø£:', error);
+    return `Ø¹Ø°Ø±Ø§Ù‹ØŒ Ø­ØµÙ„ Ø®Ø·Ø£ ðŸ˜•\n\nÙ…Ù…ÙƒÙ† ØªØ­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø«Ø§Ù†ÙŠØ©ØŸ`;
+  }
+}
+
+export const simpleSearchWeb = fastSearch;
+
+export {
+  searchCache,
+  usageTracker,
+  DEFAULT_CONFIG
+};
+
+
+
+
+
+
+
+// search.ts
+// ============================================
+// 🔍 نظام البحث الذكي
+// ============================================
+
+// كلمات البحث التلقائي المحسنة
+const SEARCH_KEYWORDS = [
+  // البحث المباشر
+  'ابحث عن', 'دور على', 'ابحث لي عن', 'find me', 'search for',
+  'معلومات عن', 'أريد معرفة', 'أخبرني عن', 'وضح لي',
+  
+  // الأخبار والأحداث الحالية
+  'آخر أخبار', 'أحدث', 'جديد في', 'ما الجديد', 'latest news',
+  'أخبار اليوم', 'حديث عن', 'معلومات حديثة عن', 'الأخبار',
+  'ما يحدث', 'الوضع الحالي', 'حالياً', 'الآن', 'اليوم',
+  'current situation', 'right now', 'today', 'what\'s happening',
+  
+  // المقارنات والتقييمات
+  'قارن بين', 'مقارنة', 'الفرق بين', 'أيهما أفضل',
+  'ما أفضل', 'أفضل طريقة', 'compare between', 'which is better',
+  
+  // الأسعار والتكاليف
+  'سعر', 'كم سعر', 'كم يكلف', 'تكلفة', 'price of', 'cost of',
+  'كم ثمن', 'بكام', 'كم يبلغ سعر',
+  
+  // التواريخ والمواعيد
+  'متى', 'تاريخ', 'موعد', 'when will', 'when is', 'when did',
+  'في أي وقت', 'كم الساعة', 'ما التاريخ',
+  
+  // الإحصائيات والبيانات
+  'إحصائيات', 'أرقام', 'بيانات', 'statistics', 'data about',
+  'النسبة', 'المعدل', 'الكمية', 'العدد',
+  
+  // موضوعات تحتاج بحث حديث
+  'الطقس', 'درجة الحرارة', 'weather', 'temperature',
+  'الأسهم', 'البورصة', 'stock price', 'market',
+  'كورونا', 'كوفيد', 'covid', 'coronavirus',
+  'الانتخابات', 'السياسة', 'الحكومة', 'politics',
+  'الرياضة', 'كرة القدم', 'المباراة', 'sports', 'football'
+];
+
+// هل السؤال يحتاج بحث؟ - نسخة محسنة
+export const needsSearch = (query: string): boolean => {
+  const lowerQuery = query.toLowerCase().trim();
+  
+  // استبعاد التحيات والمحادثات العامة
+  const excludePatterns = [
+    'مرحبا', 'مرحباً', 'أهلا', 'أهلاً', 'سلام', 'السلام عليكم', 'وعليكم السلام',
+    'صباح الخير', 'مساء الخير', 'تصبح على خير', 'شكرا', 'شكراً', 'عفوا', 'عفواً',
+    'hello', 'hi', 'hey', 'thanks', 'thank you', 'bye', 'goodbye',
+    'كيف حالك', 'كيفك', 'شلونك', 'how are you', 'ما اسمك', 'what is your name',
+    'كيف يمكنني', 'ماذا تستطيع', 'ما قدراتك', 'what can you do'
+  ];
+  
+  // إذا كان النص قصير جداً أو يحتوي على تحيات
+  if (lowerQuery.length < 8 || excludePatterns.some(pattern => lowerQuery.includes(pattern))) {
+    return false;
+  }
+  
+  // البحث عن كلمات مفتاحية للبحث
+  const hasSearchKeywords = SEARCH_KEYWORDS.some(keyword => {
+    const keywordLower = keyword.toLowerCase();
+    return lowerQuery.includes(keywordLower) || 
+           lowerQuery.startsWith(keywordLower) ||
+           (keyword.includes(' ') && lowerQuery.includes(keyword.split(' ')[0]));
+  });
+  
+  // أنماط إضافية تدل على الحاجة للبحث
+  const searchPatterns = [
+    /\b(في|من|حول|عن|about|of|in)\s+\w{4,}/g, // "عن الذكاء الاصطناعي"
+    /\b(كيف|how)\s+(يمكن|أستطيع|can|to)\s+\w+/g, // "كيف يمكن أن أفعل"
+    /\b(ما هو|what is|what are)\s+\w{3,}/g, // "ما هو البرمجة"
+    /\b(أين|where)\s+(يقع|توجد|is|are)\s+\w+/g, // "أين يقع المكان"
+    /\b(لماذا|why)\s+(يحدث|تحدث|does|is)\s+\w+/g, // "لماذا يحدث هذا"
+    /\d{4}|\b(عام|سنة|year)\b/g, // تواريخ وسنوات
+    /\b(شركة|company|مؤسسة|منظمة|organization)\s+\w+/g // أسماء الشركات
+  ];
+  
+  const hasSearchPatterns = searchPatterns.some(pattern => pattern.test(lowerQuery));
+  
+  // إذا كان النص طويل نسبياً ولا يحتوي على تحيات، فغالباً يحتاج بحث
+  const isLongQuery = lowerQuery.length > 15;
+  
+  // القرار النهائي
+  const needsWebSearch = hasSearchKeywords || hasSearchPatterns || 
+    (isLongQuery && !excludePatterns.some(pattern => lowerQuery.includes(pattern)));
+  
+  console.log('🤔 Search analysis:', {
+    query: lowerQuery.substring(0, 50),
+    hasKeywords: hasSearchKeywords,
+    hasPatterns: hasSearchPatterns,
+    isLong: isLongQuery,
+    needsSearch: needsWebSearch
+  });
+  
+  return needsWebSearch;
+};
+
+// البحث السريع المحسن
+export const searchWeb = async (
+  query: string, 
+  options: {
+    maxResults?: number;
+    useAI?: boolean;
+    retries?: number;
+  } = {}
+): Promise<any> => {
+  const { maxResults = 3, useAI = false, retries = 1 } = options;
+
+  try {
+    console.log('� Fast Search:', query);
+    
+    // طلب مبسط وسريع
+    const response = await fetch('/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, max_results: maxResults }),
+      signal: AbortSignal.timeout(3000) // timeout بعد 3 ثواني
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Search failed: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('✅ Fast Search Result:', result.totalResults || 0, 'results');
+    
+    return result;
+  } catch (error) {
+    console.error('Search error:', error);
+    
+    // إعادة محاولة واحدة فقط لتوفير الوقت
+    if (retries > 0) {
+      console.log('🔄 Quick retry...');
+      return searchWeb(query, { ...options, retries: 0 });
+    }
+    
+    // نتائج افتراضية سريعة
+    return { 
+      results: [
+        {
+          title: `بحث عن: ${query}`,
+          url: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
+          snippet: `نتائج البحث حول ${query}`,
+          content: `معلومات متعلقة بـ ${query}`
+        }
+      ], 
+      totalResults: 1,
+      searchTime: 0,
+      source: 'بحث سريع'
+    };
+  }
+};
+
+// دالة البحث المبسطة للتوافق مع النسخة القديمة
+export const simpleSearchWeb = async (query: string, retries = 2): Promise<any> => {
+  return searchWeb(query, { useAI: false, retries });
+};
+
+
+// voice-search.tsx
+// ============================================
+// ðŸŽ¤ Ù†Ø¸Ø§Ù… Ø§Ù„Ø¨Ø­Ø« Ø§Ù„ØµÙˆØªÙŠ Ø§Ù„Ù…ØªÙ‚Ø¯Ù…
+// ============================================
+
+"use client";
+
+import React, { useState, useRef, useEffect } from 'react';
+import { Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
+
+interface VoiceSearchProps {
+  onSearchQuery: (query: string) => void;
+  onError: (error: string) => void;
+  language?: 'ar-SA' | 'en-US';
+  disabled?: boolean;
+}
+
+interface SpeechRecognitionResult {
+  transcript: string;
+  confidence: number;
+  isFinal: boolean;
+}
+
+export const VoiceSearch: React.FC<VoiceSearchProps> = ({
+  onSearchQuery,
+  onError,
+  language = 'ar-SA',
+  disabled = false
+}) => {
+  const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [isSupported, setIsSupported] = useState(false);
+  const [volume, setVolume] = useState(0);
+  const [canSpeak, setCanSpeak] = useState(false);
+
+  const recognitionRef = useRef<any>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationRef = useRef<number>();
+
+  useEffect(() => {
+    // Check for speech recognition support
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const speechSynthesis = window.speechSynthesis;
+    
+    if (SpeechRecognition) {
+      setIsSupported(true);
+      recognitionRef.current = new SpeechRecognition();
+      setupRecognition();
+    } else {
+      setIsSupported(false);
+      onError('ðŸŽ¤ Ø§Ù„Ø¨Ø­Ø« Ø§Ù„ØµÙˆØªÙŠ ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ… ÙÙŠ Ù‡Ø°Ø§ Ø§Ù„Ù…ØªØµÙØ­');
+    }
+
+    if (speechSynthesis) {
+      setCanSpeak(true);
+    }
+
+    return () => {
+      stopListening();
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, []);
+
+  const setupRecognition = () => {
+    if (!recognitionRef.current) return;
+
+    const recognition = recognitionRef.current;
+    
+    recognition.continuous = false; // ØªØºÙŠÙŠØ± Ù„ØªØ¬Ù†Ø¨ Ø§Ù„ØªØ£Ø®ÙŠØ±
+    recognition.interimResults = true;
+    recognition.lang = language;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      console.log('ðŸŽ¤ Voice recognition started');
+      setIsListening(true);
+      setIsProcessing(false);
+      startVolumeMonitoring();
+    };
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        const transcript = result[0].transcript;
+
+        if (result.isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      const fullTranscript = finalTranscript || interimTranscript;
+      setTranscript(fullTranscript);
+
+      // Ù…Ø¹Ø§Ù„Ø¬Ø© ÙÙˆØ±ÙŠØ© Ù„Ù„Ù†ØªÙŠØ¬Ø© Ø§Ù„Ù†Ù‡Ø§Ø¦ÙŠØ©
+      if (finalTranscript.trim() && finalTranscript.length > 2) {
+        console.log('ðŸŽ¯ Final transcript:', finalTranscript);
+        handleVoiceResult(finalTranscript.trim());
+        recognition.stop(); // Ø¥ÙŠÙ‚Ø§Ù ÙÙˆØ±ÙŠ Ù„ØªØ¬Ù†Ø¨ Ø§Ù„ØªØ£Ø®ÙŠØ±
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('âŒ Voice recognition error:', event.error);
+      
+      let errorMessage = 'Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ Ø§Ù„ØªØ¹Ø±Ù Ø§Ù„ØµÙˆØªÙŠ';
+      switch (event.error) {
+        case 'no-speech':
+          errorMessage = 'ðŸ”‡ Ù„Ù… ÙŠØªÙ… Ø±ØµØ¯ Ø£ÙŠ ØµÙˆØªØŒ ØªØ­Ø¯Ø« Ø¨ÙˆØ¶ÙˆØ­ Ø£ÙƒØ¨Ø±';
+          break;
+        case 'audio-capture':
+          errorMessage = 'ðŸŽ¤ ØªØ¹Ø°Ø± Ø§Ù„ÙˆØµÙˆÙ„ Ù„Ù„Ù…ÙŠÙƒØ±ÙˆÙÙˆÙ†ØŒ ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ø£Ø°ÙˆÙ†Ø§Øª';
+          break;
+        case 'not-allowed':
+          errorMessage = 'â›” ØªÙ… Ø±ÙØ¶ Ø§Ù„ÙˆØµÙˆÙ„ Ù„Ù„Ù…ÙŠÙƒØ±ÙˆÙÙˆÙ†ØŒ ÙŠØ±Ø¬Ù‰ Ø§Ù„Ø³Ù…Ø§Ø­ Ø¨Ø§Ù„ÙˆØµÙˆÙ„';
+          break;
+        case 'network':
+          errorMessage = 'ðŸŒ Ù…Ø´ÙƒÙ„Ø© ÙÙŠ Ø§Ù„Ø§ØªØµØ§Ù„ Ø¨Ø§Ù„Ø¥Ù†ØªØ±Ù†Øª';
+          break;
+        default:
+          errorMessage = `âŒ Ø®Ø·Ø£ ÙÙŠ Ø§Ù„ØªØ¹Ø±Ù Ø§Ù„ØµÙˆØªÙŠ: ${event.error}`;
+      }
+      
+      onError(errorMessage);
+      stopListening();
+    };
+
+    recognition.onend = () => {
+      console.log('ðŸ Voice recognition ended');
+      setIsListening(false);
+      setIsProcessing(false);
+      setTranscript('');
+      stopVolumeMonitoring();
+    };
+  };
+
+  const startVolumeMonitoring = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioContextRef.current = new AudioContext();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      
+      analyserRef.current.fftSize = 256;
+      source.connect(analyserRef.current);
+      
+      const updateVolume = () => {
+        if (!analyserRef.current) return;
+        
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserRef.current.getByteFrequencyData(dataArray);
+        
+        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+        setVolume(average / 255);
+        
+        if (isListening) {
+          animationRef.current = requestAnimationFrame(updateVolume);
+        }
+      };
+      
+      updateVolume();
+    } catch (error) {
+      console.warn('Volume monitoring failed:', error);
+    }
+  };
+
+  const stopVolumeMonitoring = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+    setVolume(0);
+  };
+
+  const handleVoiceResult = (transcript: string) => {
+    // Ù…Ø¹Ø§Ù„Ø¬Ø© Ø³Ø±ÙŠØ¹Ø© ÙˆÙ…Ø¨Ø§Ø´Ø±Ø©
+    const cleanTranscript = transcript.trim().replace(/[.!?]+$/, '').replace(/\s+/g, ' ');
+    
+    console.log('ðŸš€ Instant voice processing:', cleanTranscript);
+    
+    // Ù…Ø¹Ø§Ù„Ø¬Ø© ÙÙˆØ±ÙŠØ© Ø¨Ø¯ÙˆÙ† ØªØ£Ø®ÙŠØ±
+    setIsProcessing(true);
+    onSearchQuery(cleanTranscript);
+    
+    // Ø¥ÙŠÙ‚Ø§Ù ÙÙˆØ±ÙŠ
+    stopListening();
+    
+    // ØªØ£ÙƒÙŠØ¯ ØµÙˆØªÙŠ Ø§Ø®ØªÙŠØ§Ø±ÙŠ
+    if (canSpeak) {
+      setTimeout(() => speakResponse(`Ø¨Ø­Ø«: ${cleanTranscript}`), 100);
+    }
+  };
+
+  const startListening = () => {
+    if (!isSupported || !recognitionRef.current || disabled) return;
+    
+    try {
+      setTranscript('');
+      setIsProcessing(false);
+      recognitionRef.current.start();
+    } catch (error) {
+      console.error('Failed to start recognition:', error);
+      onError('ðŸŽ¤ ÙØ´Ù„ ÙÙŠ Ø¨Ø¯Ø¡ Ø§Ù„ØªØ¹Ø±Ù Ø§Ù„ØµÙˆØªÙŠ');
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+    setIsProcessing(false);
+    setTranscript('');
+    stopVolumeMonitoring();
+  };
+
+  const speakResponse = (text: string) => {
+    if (!canSpeak || !window.speechSynthesis) return;
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language;
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 0.8;
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening();
+    }
+  };
+
+  if (!isSupported) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm text-gray-600 dark:text-gray-400">
+        <MicOff className="w-4 h-4" />
+        <span>Ø§Ù„Ø¨Ø­Ø« Ø§Ù„ØµÙˆØªÙŠ ØºÙŠØ± Ù…Ø¯Ø¹ÙˆÙ…</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Voice Search Button */}
+      <button
+        onClick={toggleListening}
+        disabled={disabled || isProcessing}
+        className={`
+          relative p-3 rounded-full transition-all duration-300 flex items-center justify-center
+          ${isListening 
+            ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg scale-110' 
+            : 'bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:shadow-lg'
+          }
+          ${disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+          ${isListening ? 'animate-pulse' : ''}
+        `}
+        title={isListening ? 'Ø¥ÙŠÙ‚Ø§Ù Ø§Ù„Ø¨Ø­Ø« Ø§Ù„ØµÙˆØªÙŠ' : 'Ø¨Ø¯Ø¡ Ø§Ù„Ø¨Ø­Ø« Ø§Ù„ØµÙˆØªÙŠ'}
+      >
+        {isProcessing ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : isListening ? (
+          <MicOff className="w-5 h-5" />
+        ) : (
+          <Mic className="w-5 h-5" />
+        )}
+        
+        {/* Volume indicator */}
+        {isListening && (
+          <div 
+            className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full"
+            style={{ 
+              opacity: Math.min(volume * 3, 1),
+              transform: `scale(${1 + volume})` 
+            }}
+          />
+        )}
+      </button>
+
+      {/* Live Transcript Display */}
+      {(isListening || isProcessing) && (
+        <div className="flex-1 min-w-0">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-md">
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`w-2 h-2 rounded-full ${isListening ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {isProcessing ? 'âš¡ Ø¨Ø­Ø« ÙÙˆØ±ÙŠ Ø¬Ø§Ø±ÙŠ...' : isListening ? 'ðŸŽ¤ Ø§Ø³ØªÙ…Ø¹...' : 'â¹ï¸ ØªÙˆÙ‚Ù'}
+              </span>
+            </div>
+            <p className="text-sm text-gray-800 dark:text-gray-200 min-h-[20px]">
+              {transcript || (isListening ? 'ØªØ­Ø¯Ø« Ø§Ù„Ø¢Ù†...' : 'Ø¬Ø§Ø±ÙŠ Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©...')}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Speaker Toggle */}
+      {canSpeak && (
+        <button
+          onClick={() => setCanSpeak(!canSpeak)}
+          className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+          title={canSpeak ? 'ÙƒØªÙ… Ø§Ù„ØµÙˆØª' : 'ØªÙØ¹ÙŠÙ„ Ø§Ù„ØµÙˆØª'}
+        >
+          {canSpeak ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default VoiceSearch;
+
+
+// text-to-speech.tsx
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Volume2, VolumeX, Pause, Play } from 'lucide-react';
+
+interface TextToSpeechProps {
+  text: string;
+  autoPlay?: boolean;
+  className?: string;
+}
+
+export const TextToSpeech: React.FC<TextToSpeechProps> = ({ 
+  text, 
+  autoPlay = false,
+  className = ''
+}) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    // التحقق من دعم المتصفح
+    setIsSupported('speechSynthesis' in window);
+  }, []);
+
+  useEffect(() => {
+    if (autoPlay && isSupported && text) {
+      handleSpeak();
+    }
+  }, [autoPlay, text, isSupported]);
+
+  const cleanText = (rawText: string): string => {
+    // تنظيف النص من markdown والرموز
+    return rawText
+      .replace(/```[\s\S]*?```/g, '') // إزالة code blocks
+      .replace(/`[^`]*`/g, '') // إزالة inline code
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // إزالة bold
+      .replace(/\*([^*]+)\*/g, '$1') // إزالة italic
+      .replace(/#+ /g, '') // إزالة headings
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // إزالة links (الاحتفاظ بالنص فقط)
+      .replace(/[🔍🎯📊⏱️💡✅❌🎥📚💻⚙️📰🌐👤👁️🔗📎]/g, '') // إزالة emojis
+      .replace(/>\s*/g, '') // إزالة blockquotes
+      .replace(/\n{3,}/g, '\n\n') // تقليل الأسطر الفارغة
+      .trim();
+  };
+
+  const handleSpeak = () => {
+    if (!isSupported) {
+      console.warn('❌ Text-to-Speech not supported');
+      return;
+    }
+
+    // إيقاف النطق الحالي إذا كان موجود
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      setIsPaused(false);
+      return;
+    }
+
+    const cleanedText = cleanText(text);
+    
+    if (!cleanedText) {
+      console.warn('⚠️ No text to speak');
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanedText);
+    utteranceRef.current = utterance;
+
+    // إعدادات الصوت العربي
+    utterance.lang = 'ar-SA'; // اللغة العربية السعودية
+    utterance.rate = 0.9; // سرعة متوسطة
+    utterance.pitch = 1.0; // نغمة طبيعية
+    utterance.volume = 1.0; // صوت عالي
+
+    // محاولة اختيار صوت عربي
+    const voices = window.speechSynthesis.getVoices();
+    const arabicVoice = voices.find(voice => 
+      voice.lang.startsWith('ar') || 
+      voice.name.includes('Arabic')
+    );
+    
+    if (arabicVoice) {
+      utterance.voice = arabicVoice;
+      console.log('🔊 Using Arabic voice:', arabicVoice.name);
+    } else {
+      console.log('⚠️ No Arabic voice found, using default');
+    }
+
+    // Event handlers
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setIsPaused(false);
+      console.log('🔊 Started speaking');
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setIsPaused(false);
+      console.log('✅ Finished speaking');
+    };
+
+    utterance.onerror = (event) => {
+      console.error('❌ Speech error:', event.error);
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+
+    utterance.onpause = () => {
+      setIsPaused(true);
+      console.log('⏸️ Speech paused');
+    };
+
+    utterance.onresume = () => {
+      setIsPaused(false);
+      console.log('▶️ Speech resumed');
+    };
+
+    // بدء النطق
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handlePauseResume = () => {
+    if (!isSupported) return;
+
+    if (isPaused) {
+      window.speechSynthesis.resume();
+    } else {
+      window.speechSynthesis.pause();
+    }
+  };
+
+  const handleStop = () => {
+    if (!isSupported) return;
+    
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsPaused(false);
+  };
+
+  if (!isSupported) {
+    return null; // لا تعرض الزر إذا المتصفح لا يدعم النطق
+  }
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      {/* زر النطق الرئيسي */}
+      <button
+        onClick={handleSpeak}
+        className={`
+          p-2 rounded-lg transition-all duration-200
+          ${isPlaying 
+            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
+            : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+          }
+          hover:scale-105 active:scale-95
+          disabled:opacity-50 disabled:cursor-not-allowed
+        `}
+        title={isPlaying ? "إيقاف النطق" : "تشغيل النطق"}
+        disabled={!text}
+      >
+        {isPlaying ? (
+          <VolumeX className="w-4 h-4" />
+        ) : (
+          <Volume2 className="w-4 h-4" />
+        )}
+      </button>
+
+      {/* أزرار التحكم (إيقاف مؤقت/استئناف) */}
+      {isPlaying && (
+        <>
+          <button
+            onClick={handlePauseResume}
+            className="p-2 rounded-lg bg-yellow-500/20 text-yellow-400 
+                     hover:bg-yellow-500/30 transition-all duration-200
+                     hover:scale-105 active:scale-95"
+            title={isPaused ? "استئناف" : "إيقاف مؤقت"}
+          >
+            {isPaused ? (
+              <Play className="w-4 h-4" />
+            ) : (
+              <Pause className="w-4 h-4" />
+            )}
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default TextToSpeech;
+
+
+
+
+Cloud model deployment guide
+Letzte Nachricht vor 13 Stunden
+هيكل الشخصيات
+Letzte Nachricht vor 18 Stunden
+مايخص البحث وملفاته
+Letzte Nachricht vor 18 Stunden
+Code edit اضافة المحرات للاكواد
+Letzte Nachricht vor 19 Stunden
+Website editor اضافة المحرر
+Letzte Nachricht vor 20 Stunden
+DALL·E 3 API تطوير الصور
+Letzte Nachricht vor 20 Stunden
+Aتصميم الصفحه الجديد
+Letzte Nachricht vor 20 Stunden
+ستراتيجية حفظ المشروع مهمهff
+Letzte Nachricht vor 1 Tag
+Requested pages
+Letzte Nachricht vor 1 Tag
+Aاضافة الصور وموقع الصور
+Letzte Nachricht vor 1 Tag
+Open GitHub
+Letzte Nachricht vor 2 Tagen
+Cloud integration with editor
+Letzte Nachricht vor 2 Tagen
+Cloud integration with editor
+Letzte Nachricht vor 2 Tagen
+I الشخصيات
+Letzte Nachricht vor 2 Tagen
+دخول المشروع
+Letzte Nachricht vor 2 Tagen
+Fمهم اضافة كلاود للمحرر
+Letzte Nachricht vor 3 Tagen
+Research problem analysis
+Letzte Nachricht vor 3 Tagen
+Logo design development
+Letzte Nachricht vor 3 Tagen
+Professional color system design
+Letzte Nachricht vor 4 Tagen
+Aliai AI chat project structure
+Letzte Nachricht vor 4 Tagen
+Oqool.net deployment support
+Letzte Nachricht vor 6 Tagen
+Oqool.net deployment troubleshooting
+Letzte Nachricht vor 6 Tagen
+Oqool AI project overview
+Letzte Nachricht vor 7 Tagen
+Oqool project deployment summary
+Letzte Nachricht vor 9 Tagen
+Oqool AI project infrastructure overview
+Letzte Nachricht vor 9 Tagen
+Medical AI model selection strategy
+Letzte Nachricht vor 9 Tagen
+Project status review and next steps
+Letzte Nachricht vor 10 Tagen
+Anweisungen
+Anweisungen hinzufügen, um Claudes Antworten anzupassen
+
+Dateien
+21% der Projektkapazität verwendet
+Wird abgerufen
+
+moaid15-hub/Aliai
+main
+
+GITHUB
+
+
+
+عقول - الصفحة الرئيسية المحسّنة.html
+663 Zeilen
+
+html
+
+
+
+عقول - الصفحة الرئيسية المحسّنة.html
+619 Zeilen
+
+html
+
+
+
+ui-components.tsx
+830 Zeilen
+
+tsx
+
+
+
+types.ts
+49 Zeilen
+
+ts
+
+
+
+config.ts
+89 Zeilen
+
+ts
+
+
+
+ai-system-info.tsx
+141 Zeilen
+
+tsx
+
+
+
+ai-service.ts
+267 Zeilen
+
+ts
+
+
+
+ai-selector.ts
+294 Zeilen
+
+ts
+
+
+
+web-search.ts
+949 Zeilen
+
+ts
+
+
+
+voice-search.tsx
+325 Zeilen
+
+tsx
+
+
+
+text-to-speech.tsx
+195 Zeilen
+
+tsx
+
+
+
+search.ts
+158 Zeilen
+
+ts
+
+
+
+oqool-website.html
+517 Zeilen
+
+html
+
+
+
+شعار Oqool AI - خيارات متعددة.tsx
+274 Zeilen
+
+tsx
+
+
+
+Oqool AI - موقع متكامل.html
+555 Zeilen
+
+html
+
+
+
+Oqool AI - واجهة المحادثة التفاعلية.html
+559 Zeilen
+
+html
+
+
+
+System Prompt - البحث الديني لعقول AI.txt
+229 Zeilen
+
+txt
+
+
+
+Religious Search Handler - معالج البحث الديني.txt
+189 Zeilen
+
+txt
+
+
+
+Oqool AI - موقع متكامل.html
+547 Zeilen
+
+html
+
+
+
+Chat Window - Professional Design.tsx
+328 Zeilen
+
+tsx
+
+
+
+text-to-speech.tsx
+5.47 KB •195 Zeilen
+•
+Die Formatierung kann von der Quelle abweichen
+// text-to-speech.tsx
+"use client";
+
+import React, { useState, useEffect, useRef } from 'react';
+import { Volume2, VolumeX, Pause, Play } from 'lucide-react';
+
+interface TextToSpeechProps {
+  text: string;
+  autoPlay?: boolean;
+  className?: string;
+}
+
+export const TextToSpeech: React.FC<TextToSpeechProps> = ({ 
+  text, 
+  autoPlay = false,
+  className = ''
+}) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isSupported, setIsSupported] = useState(false);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    // التحقق من دعم المتصفح
+    setIsSupported('speechSynthesis' in window);
+  }, []);
+
+  useEffect(() => {
+    if (autoPlay && isSupported && text) {
+      handleSpeak();
+    }
+  }, [autoPlay, text, isSupported]);
+
+  const cleanText = (rawText: string): string => {
+    // تنظيف النص من markdown والرموز
+    return rawText
+      .replace(/```[\s\S]*?```/g, '') // إزالة code blocks
+      .replace(/`[^`]*`/g, '') // إزالة inline code
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // إزالة bold
+      .replace(/\*([^*]+)\*/g, '$1') // إزالة italic
+      .replace(/#+ /g, '') // إزالة headings
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // إزالة links (الاحتفاظ بالنص فقط)
+      .replace(/[🔍🎯📊⏱️💡✅❌🎥📚💻⚙️📰🌐👤👁️🔗📎]/g, '') // إزالة emojis
+      .replace(/>\s*/g, '') // إزالة blockquotes
+      .replace(/\n{3,}/g, '\n\n') // تقليل الأسطر الفارغة
+      .trim();
+  };
+
+  const handleSpeak = () => {
+    if (!isSupported) {
+      console.warn('❌ Text-to-Speech not supported');
+      return;
+    }
+
+    // إيقاف النطق الحالي إذا كان موجود
+    if (isPlaying) {
+      window.speechSynthesis.cancel();
+      setIsPlaying(false);
+      setIsPaused(false);
+      return;
+    }
+
+    const cleanedText = cleanText(text);
+    
+    if (!cleanedText) {
+      console.warn('⚠️ No text to speak');
+      return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(cleanedText);
+    utteranceRef.current = utterance;
+
+    // إعدادات الصوت العربي
+    utterance.lang = 'ar-SA'; // اللغة العربية السعودية
+    utterance.rate = 0.9; // سرعة متوسطة
+    utterance.pitch = 1.0; // نغمة طبيعية
+    utterance.volume = 1.0; // صوت عالي
+
+    // محاولة اختيار صوت عربي
+    const voices = window.speechSynthesis.getVoices();
+    const arabicVoice = voices.find(voice => 
+      voice.lang.startsWith('ar') || 
+      voice.name.includes('Arabic')
+    );
+    
+    if (arabicVoice) {
+      utterance.voice = arabicVoice;
+      console.log('🔊 Using Arabic voice:', arabicVoice.name);
+    } else {
+      console.log('⚠️ No Arabic voice found, using default');
+    }
+
+    // Event handlers
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setIsPaused(false);
+      console.log('🔊 Started speaking');
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setIsPaused(false);
+      console.log('✅ Finished speaking');
+    };
+
+    utterance.onerror = (event) => {
+      console.error('❌ Speech error:', event.error);
+      setIsPlaying(false);
+      setIsPaused(false);
+    };
+
+    utterance.onpause = () => {
+      setIsPaused(true);
+      console.log('⏸️ Speech paused');
+    };
+
+    utterance.onresume = () => {
+      setIsPaused(false);
+      console.log('▶️ Speech resumed');
+    };
+
+    // بدء النطق
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handlePauseResume = () => {
+    if (!isSupported) return;
+
+    if (isPaused) {
+      window.speechSynthesis.resume();
+    } else {
+      window.speechSynthesis.pause();
+    }
+  };
+
+  const handleStop = () => {
+    if (!isSupported) return;
+    
+    window.speechSynthesis.cancel();
+    setIsPlaying(false);
+    setIsPaused(false);
+  };
+
+  if (!isSupported) {
+    return null; // لا تعرض الزر إذا المتصفح لا يدعم النطق
+  }
+
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      {/* زر النطق الرئيسي */}
+      <button
+        onClick={handleSpeak}
+        className={`
+          p-2 rounded-lg transition-all duration-200
+          ${isPlaying 
+            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
+            : 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+          }
+          hover:scale-105 active:scale-95
+          disabled:opacity-50 disabled:cursor-not-allowed
+        `}
+        title={isPlaying ? "إيقاف النطق" : "تشغيل النطق"}
+        disabled={!text}
+      >
+        {isPlaying ? (
+          <VolumeX className="w-4 h-4" />
+        ) : (
+          <Volume2 className="w-4 h-4" />
+        )}
+      </button>
+
+      {/* أزرار التحكم (إيقاف مؤقت/استئناف) */}
+      {isPlaying && (
+        <>
+          <button
+            onClick={handlePauseResume}
+            className="p-2 rounded-lg bg-yellow-500/20 text-yellow-400 
+                     hover:bg-yellow-500/30 transition-all duration-200
+                     hover:scale-105 active:scale-95"
+            title={isPaused ? "استئناف" : "إيقاف مؤقت"}
+          >
+            {isPaused ? (
+              <Play className="w-4 h-4" />
+            ) : (
+              <Pause className="w-4 h-4" />
+            )}
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default TextToSpeech;
+
