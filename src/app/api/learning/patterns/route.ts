@@ -8,6 +8,16 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if Supabase is configured
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Database not configured',
+        patterns: [],
+        total: 0
+      }, { status: 503 });
+    }
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query');
     const limit = parseInt(searchParams.get('limit') || '10');
@@ -55,6 +65,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Supabase is configured
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Database not configured'
+      }, { status: 503 });
+    }
+
     const body = await request.json();
 
     const { data: pattern, error } = await supabaseAdmin

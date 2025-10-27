@@ -8,6 +8,18 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function GET() {
   try {
+    // Check if Supabase is configured
+    if (!supabaseAdmin) {
+      return NextResponse.json({
+        success: false,
+        error: 'Database not configured',
+        metadata: { totalUsers: 0, totalProjects: 0, lastUpdate: Date.now() },
+        topCategories: {},
+        averageScore: 0,
+        communityGrowth: 0
+      }, { status: 503 });
+    }
+
     // Get total projects count
     const { count: totalProjects } = await supabaseAdmin
       .from('patterns')
