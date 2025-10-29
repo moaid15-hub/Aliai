@@ -28,6 +28,9 @@ export default function TeacherPage() {
   const [voiceSpeed, setVoiceSpeed] = useState<number>(1.0);
   const [showVoicePanel, setShowVoicePanel] = useState(false);
   const [isPlayingSample, setIsPlayingSample] = useState<string | null>(null);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState<boolean>(true);
+  const [isLoadingAudio, setIsLoadingAudio] = useState<boolean>(false);
+  const [autoSendVoice, setAutoSendVoice] = useState<boolean>(true);
 
   // Image Upload
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
@@ -58,6 +61,16 @@ export default function TeacherPage() {
     scrollToBottom();
   }, [messages]);
 
+  // Auto-send after voice input
+  useEffect(() => {
+    if (!isListening && input.trim() && autoSendVoice && !isLoading) {
+      const timer = setTimeout(() => {
+        handleSend();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isListening]);
+
   // Initialize Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -81,8 +94,17 @@ export default function TeacherPage() {
         }
 
         if (finalTranscript) {
-          setInput(prev => prev + finalTranscript);
+          const newText = finalTranscript.trim();
+          setInput(prev => prev + newText);
           setCurrentTranscript('');
+
+          // إرسال تلقائي إذا كان مفعل
+          if (autoSendVoice && newText) {
+            // إيقاف التسجيل أولاً
+            if (recognitionRef.current) {
+              recognitionRef.current.stop();
+            }
+          }
         } else {
           setCurrentTranscript(interimTranscript);
         }
@@ -108,7 +130,7 @@ export default function TeacherPage() {
         recognitionRef.current.stop();
       }
     };
-  }, []);
+  }, [autoSendVoice]);
 
   // Image Upload Handler
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,6 +164,35 @@ export default function TeacherPage() {
     }
   };
 
+  // Stop/Cancel voice recording
+  const stopVoiceRecording = () => {
+    if (recognitionRef.current && isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      setCurrentTranscript('');
+      setInput(''); // مسح النص المدخل
+      setToast({
+        message: 'تم إلغاء التسجيل الصوتي',
+        type: 'info',
+      });
+    }
+  };
+
+  // Stop/Mute current audio
+  const stopCurrentAudio = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+      setIsSpeaking(false);
+      setIsLoadingAudio(false);
+      setToast({
+        message: 'تم إيقاف الصوت',
+        type: 'info',
+      });
+    }
+  };
+
   // Play voice sample
   const playSample = async (voice: string) => {
     setIsPlayingSample(voice);
@@ -172,13 +223,21 @@ export default function TeacherPage() {
 
   // Play auto response (when AI responds)
   const playAutoResponse = async (text: string) => {
+    // تحقق من تفعيل الصوت التلقائي
+    if (!autoPlayEnabled) {
+      console.log('⏸️ الصوت التلقائي معطل');
+      return;
+    }
+
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
     }
 
     setIsSpeaking(true);
+    setIsLoadingAudio(true);
     try {
+      console.log('🔊 بداية تشغيل الصوت التلقائي...');
       const response = await fetch('/api/text-to-speech', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,23 +245,54 @@ export default function TeacherPage() {
       });
 
       if (response.ok) {
+        console.log('✅ تم الحصول على الصوت من الـ API');
+        setIsLoadingAudio(false);
         const audioBlob = await response.blob();
         const audioUrl = URL.createObjectURL(audioBlob);
         const audio = new Audio(audioUrl);
         currentAudioRef.current = audio;
 
-        audio.play();
+        // محاولة التشغيل مع معالجة الأخطاء
+        const playPromise = audio.play();
+
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              console.log('✅ تم تشغيل الصوت بنجاح');
+            })
+            .catch((error) => {
+              console.warn('⚠️ فشل التشغيل التلقائي:', error.message);
+              // عرض رسالة للمستخدم أن يضغط على زر التشغيل
+              setToast({
+                message: 'اضغط على أيقونة 🔊 لسماع الرد',
+                type: 'info',
+              });
+              setIsSpeaking(false);
+            });
+        }
+
         audio.onended = () => {
+          console.log('🔇 انتهى الصوت');
           setIsSpeaking(false);
           URL.revokeObjectURL(audioUrl);
           currentAudioRef.current = null;
         };
+
+        audio.onerror = (error) => {
+          console.error('❌ خطأ في تشغيل الصوت:', error);
+          setIsSpeaking(false);
+          setIsLoadingAudio(false);
+          URL.revokeObjectURL(audioUrl);
+        };
       } else {
+        console.error('❌ فشل الحصول على الصوت من الـ API');
         setIsSpeaking(false);
+        setIsLoadingAudio(false);
       }
     } catch (error) {
-      console.error('Error playing auto response:', error);
+      console.error('❌ خطأ في playAutoResponse:', error);
       setIsSpeaking(false);
+      setIsLoadingAudio(false);
     }
   };
 
@@ -427,6 +517,7 @@ export default function TeacherPage() {
           messages: [...messages, userMessage],
           userId: 'teacher-user',
           conversationId: 'teacher-session',
+          disableSearch: false, // تفعيل البحث في يوتيوب
           settings: {
             teacherMode: true,
             iraqiTeacher: true,
@@ -440,6 +531,8 @@ export default function TeacherPage() {
       const data = await response.json();
 
       if (data.success) {
+        console.log('📹 الفيديوهات من الـ API:', data.videos);
+
         const aiMessage: Message = {
           id: `ai-${Date.now()}`,
           role: 'assistant',
@@ -520,6 +613,26 @@ export default function TeacherPage() {
     }
   };
 
+  // Clear conversation
+  const handleClearConversation = () => {
+    if (messages.length === 0) {
+      setToast({
+        message: 'لا توجد محادثة لمسحها',
+        type: 'info',
+      });
+      return;
+    }
+
+    const confirmed = window.confirm('هل تريد حقاً مسح المحادثة؟');
+    if (confirmed) {
+      setMessages([]);
+      setToast({
+        message: 'تم مسح المحادثة بنجاح',
+        type: 'success',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100" dir="rtl">
       {/* Header */}
@@ -546,10 +659,28 @@ export default function TeacherPage() {
                 🎙️ الصوت
               </button>
               <button
+                onClick={() => setAutoPlayEnabled(!autoPlayEnabled)}
+                className={`px-4 py-2 rounded-lg transition-all text-sm font-medium ${
+                  autoPlayEnabled
+                    ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                }`}
+                title={autoPlayEnabled ? 'إيقاف الصوت التلقائي' : 'تشغيل الصوت التلقائي'}
+              >
+                {autoPlayEnabled ? '🔊' : '🔇'} تلقائي
+              </button>
+              <button
                 onClick={() => setShowCalculator(!showCalculator)}
                 className="px-4 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all text-sm font-medium"
               >
                 🔢 الآلة الحاسبة
+              </button>
+              <button
+                onClick={handleClearConversation}
+                className="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-all text-sm font-medium"
+                title="مسح المحادثة"
+              >
+                🗑️ مسح
               </button>
               <button className="px-4 py-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all text-sm font-medium">
                 الإعدادات
@@ -969,6 +1100,20 @@ export default function TeacherPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* مؤشر تحميل الصوت */}
+                    {isLoadingAudio && (
+                      <div className="flex justify-end animate-fadeIn">
+                        <div className="flex gap-2.5 max-w-[75%] flex-row-reverse">
+                          <div className="bg-blue-100 rounded-xl p-3 shadow-sm flex items-center gap-2">
+                            <svg className="w-4 h-4 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <span className="text-sm text-blue-600">جاري تحويل النص إلى صوت...</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
                 <div ref={messagesEndRef} />
@@ -1038,6 +1183,33 @@ export default function TeacherPage() {
                       )}
                     </svg>
                   </button>
+
+                  {/* زر إلغاء التسجيل الصوتي */}
+                  {isListening && (
+                    <button
+                      onClick={stopVoiceRecording}
+                      className="p-3.5 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-all shadow-sm flex-shrink-0"
+                      title="إلغاء التسجيل"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* زر إيقاف الصوت */}
+                  {(isSpeaking || isLoadingAudio) && (
+                    <button
+                      onClick={stopCurrentAudio}
+                      className="p-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl transition-all shadow-sm flex-shrink-0"
+                      title="إيقاف الصوت"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
 
                 {/* الأزرار الإضافية وحالة النظام */}

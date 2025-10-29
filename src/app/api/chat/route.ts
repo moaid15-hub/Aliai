@@ -592,6 +592,22 @@ export async function POST(request: NextRequest) {
             } : undefined
           }));
 
+          // استخراج الفيديوهات من المصادر
+          const videos = sources
+            .filter(s => s.source === 'youtube')
+            .map(s => {
+              const videoId = s.url.includes('v=') ? s.url.split('v=')[1].split('&')[0] : s.url.split('/').pop();
+              return {
+                id: videoId,
+                title: s.title,
+                url: s.url,
+                thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                channelName: s.video?.channelName || 'Unknown',
+                duration: s.video?.duration || '',
+                views: s.video?.views || ''
+              };
+            });
+
           return NextResponse.json({
             success: true,
             message: formattedMessage,
@@ -599,6 +615,7 @@ export async function POST(request: NextRequest) {
             isSearchResult: true,
             isEnhancedSearch: true,
             sources,
+            videos,
             searchMetadata: {
               query: userInput,
               sourcesUsed: allSources.map(s => s.source),
@@ -679,12 +696,29 @@ export async function POST(request: NextRequest) {
             } : undefined
           }));
 
+          // استخراج الفيديوهات من المصادر
+          const videos = sources
+            .filter(s => s.source === 'youtube')
+            .map(s => {
+              const videoId = s.url.includes('v=') ? s.url.split('v=')[1].split('&')[0] : s.url.split('/').pop();
+              return {
+                id: videoId,
+                title: s.title,
+                url: s.url,
+                thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+                channelName: s.video?.channelName || 'Unknown',
+                duration: s.video?.duration || '',
+                views: s.video?.views || ''
+              };
+            });
+
           return NextResponse.json({
             success: true,
             message: formattedMessage,
             model: 'multi-search',
             isSearchResult: true,
             sources,
+            videos,
             searchMetadata: {
               query: userInput,
               sources: allSources.map(s => s.source),

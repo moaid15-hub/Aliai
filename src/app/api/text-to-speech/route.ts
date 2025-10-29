@@ -30,8 +30,8 @@ interface CacheMetadata {
 }
 
 // إنشاء hash للنص (cache key)
-function getCacheKey(text: string, voice: string): string {
-  const hash = createHash('md5').update(`${text}-${voice}`).digest('hex');
+function getCacheKey(text: string, voice: string, speed: number = 1.0): string {
+  const hash = createHash('md5').update(`${text}-${voice}-${speed}`).digest('hex');
   return hash;
 }
 
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. لم نجد تشابه، نبحث عن مطابقة تامة
-    const cacheKey = getCacheKey(text, voice);
+    const cacheKey = getCacheKey(text, voice, speed);
     const exactMatch = await getFromCache(cacheKey);
     if (exactMatch) {
       console.log('⚡ إرجاع الصوت من الكاش (مطابقة تامة!)');
