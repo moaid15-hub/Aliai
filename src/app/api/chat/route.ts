@@ -160,14 +160,14 @@ async function sendToRealProvider(messages: any[], provider: string, image?: str
           if (hasImageInThisMessage) {
             // رسالة تحتوي على صورة
             return {
-              role: m.role === 'assistant' ? 'assistant' : 'user',
+              role: 'user' as const,
               content: [
                 {
-                  type: 'text',
+                  type: 'text' as const,
                   text: m.content || 'ما الذي تراه في هذه الصورة؟'
                 },
                 {
-                  type: 'image_url',
+                  type: 'image_url' as const,
                   image_url: {
                     url: image
                   }
@@ -177,7 +177,7 @@ async function sendToRealProvider(messages: any[], provider: string, image?: str
           } else {
             // رسالة نصية عادية
             return {
-              role: m.role === 'assistant' ? 'assistant' : 'user',
+              role: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
               content: m.content
             };
           }
