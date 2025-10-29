@@ -9,6 +9,7 @@ const VideoCards = dynamic(() => import('@/components/personas/iraqi-teacher/Vid
 interface Message extends AIMessage {
   sources?: any[];
   videos?: any[];
+  image?: string;
 }
 
 export default function TeacherPage() {
@@ -503,6 +504,7 @@ export default function TeacherPage() {
       role: 'user',
       content: input.trim(),
       timestamp: new Date(),
+      image: uploadedImage || undefined,
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -542,6 +544,7 @@ export default function TeacherPage() {
           videos: data.videos,
         };
         setMessages(prev => [...prev, aiMessage]);
+        // مسح الصورة بعد الإرسال الناجح
         setUploadedImage(null);
 
         // Play audio automatically
@@ -1027,6 +1030,12 @@ export default function TeacherPage() {
                       >
                         اختبار سريع
                       </button>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-1.5 bg-white text-slate-600 text-xs rounded-full hover:bg-blue-50 hover:text-blue-600 transition-colors border border-slate-200"
+                      >
+                        📸 إرسال صورة الواجب
+                      </button>
                     </div>
                   </div>
                 ) : (
@@ -1055,6 +1064,18 @@ export default function TeacherPage() {
                             {msg.role === 'assistant' && msg.videos && msg.videos.length > 0 && (
                               <div className="mb-3">
                                 <VideoCards videos={msg.videos} isExplicitSearch={false} />
+                              </div>
+                            )}
+
+                            {/* User image attachment */}
+                            {msg.role === 'user' && msg.image && (
+                              <div className="mb-2">
+                                <img
+                                  src={msg.image}
+                                  alt="صورة الواجب"
+                                  className="max-w-xs rounded-lg border-2 border-slate-300 shadow-sm"
+                                />
+                                <p className="text-xs text-slate-500 mt-1">📎 صورة الواجب</p>
                               </div>
                             )}
 
@@ -1133,6 +1154,32 @@ export default function TeacherPage() {
 
               {/* منطقة الإدخال والتحكم */}
               <div className="p-5 border-t border-slate-200 bg-white">
+                {/* معاينة الصورة المرفوعة */}
+                {uploadedImage && (
+                  <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={uploadedImage}
+                        alt="صورة الواجب"
+                        className="w-24 h-24 object-cover rounded-lg border-2 border-blue-300"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-800 mb-1">📸 صورة الواجب جاهزة للإرسال</p>
+                        <p className="text-xs text-blue-600">سيتم إرفاق الصورة مع رسالتك القادمة</p>
+                      </div>
+                      <button
+                        onClick={() => setUploadedImage(null)}
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="حذف الصورة"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* زر المايك والإدخال النصي */}
                 <div className="flex items-end gap-3 mb-3">
                   {/* حقل الإدخال النصي */}
@@ -1218,13 +1265,24 @@ export default function TeacherPage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                      title="إرفاق ملف"
+                      className={`p-2 rounded-lg transition-colors ${
+                        uploadedImage
+                          ? 'text-blue-600 bg-blue-50 hover:bg-blue-100'
+                          : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                      }`}
+                      title="إرفاق صورة الواجب"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
                     </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
 
                     <button
                       className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
