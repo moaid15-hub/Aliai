@@ -55,3 +55,6 @@ quick-test.js
 simple-teacher-system/
 public/uploads/*.png
 public/uploads/*.jpg
+
+# Audio cache
+.cache/

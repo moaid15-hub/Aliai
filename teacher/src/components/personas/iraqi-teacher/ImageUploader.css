@@ -1,0 +1,241 @@
+/* components/personas/iraqi-teacher/ImageUploader.css */
+/* أنماط رفع الصور */
+
+.image-uploader {
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+  direction: rtl;
+}
+
+.image-uploader__title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  color: #2c3e50;
+}
+
+.image-uploader__icon {
+  font-size: 1.5rem;
+  margin-left: 10px;
+  color: #27ae60;
+}
+
+.image-uploader__title h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.image-uploader__drop-zone {
+  border: 3px dashed #bdc3c7;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  background: linear-gradient(135deg, #ecf0f1, #d5dbdb);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.image-uploader__drop-zone:hover {
+  border-color: #3498db;
+  background: linear-gradient(135deg, #e8f4f8, #d6eaf8);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.image-uploader__drop-zone--dragover {
+  border-color: #27ae60;
+  background: linear-gradient(135deg, #e8f5e8, #c8e6c9);
+  transform: scale(1.02);
+}
+
+.image-uploader__drop-zone--uploading {
+  border-color: #f39c12;
+  background: linear-gradient(135deg, #fef9e7, #fcf3cf);
+}
+
+.image-uploader__drop-zone--error {
+  border-color: #e74c3c;
+  background: linear-gradient(135deg, #fdedec, #fadbd8);
+}
+
+.image-uploader__drop-icon {
+  font-size: 4rem;
+  color: #7f8c8d;
+  margin-bottom: 15px;
+  transition: all 0.3s ease;
+}
+
+.image-uploader__drop-zone:hover .image-uploader__drop-icon {
+  color: #3498db;
+  transform: scale(1.1);
+}
+
+.image-uploader__drop-zone--dragover .image-uploader__drop-icon {
+  color: #27ae60;
+  animation: bounce 0.6s infinite;
+}
+
+.image-uploader__drop-text {
+  font-size: 1.2rem;
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-weight: bold;
+}
+
+.image-uploader__drop-subtext {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.image-uploader__file-input {
+  display: none;
+}
+
+.image-uploader__browse-btn {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 8px;
+  margin: 15px 0;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-uploader__browse-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.image-uploader__progress {
+  margin: 20px 0;
+  background: #ecf0f1;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 8px;
+  position: relative;
+}
+
+.image-uploader__progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.image-uploader__progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+.image-uploader__status {
+  margin: 15px 0;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: bold;
+}
+
+.image-uploader__status--uploading {
+  background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+  color: #856404;
+}
+
+.image-uploader__status--success {
+  background: linear-gradient(135deg, #d4edda, #c3e6cb);
+  color: #155724;
+}
+
+.image-uploader__status--error {
+  background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+  color: #721c24;
+}
+
+.image-uploader__supported-formats {
+  margin-top: 15px;
+  padding: 15px;
+  background: linear-gradient(135deg, #e8f4f8, #d6eaf8);
+  border-radius: 10px;
+  text-align: center;
+  color: #2980b9;
+}
+
+.image-uploader__format-list {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.image-uploader__format-item {
+  background: rgba(255, 255, 255, 0.7);
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #34495e;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-10px) scale(1.1);
+  }
+  60% {
+    transform: translateY(-5px) scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .image-uploader {
+    padding: 15px;
+  }
+  
+  .image-uploader__drop-zone {
+    padding: 30px 20px;
+  }
+  
+  .image-uploader__drop-icon {
+    font-size: 3rem;
+  }
+  
+  .image-uploader__drop-text {
+    font-size: 1rem;
+  }
+  
+  .image-uploader__format-list {
+    gap: 8px;
+  }
+}

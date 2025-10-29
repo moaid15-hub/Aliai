@@ -1,0 +1,221 @@
+/* components/personas/iraqi-teacher/SubjectSelector.css */
+/* أنماط اختيار المادة */
+
+.subject-selector {
+  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin: 20px 0;
+  direction: rtl;
+}
+
+.subject-selector__title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  color: #2c3e50;
+}
+
+.subject-selector__icon {
+  font-size: 1.5rem;
+  margin-left: 10px;
+  color: #9b59b6;
+}
+
+.subject-selector__title h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.subject-selector__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.subject-selector__subject {
+  background: linear-gradient(135deg, #ecf0f1, #bdc3c7);
+  border: 2px solid #bdc3c7;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.subject-selector__subject:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.subject-selector__subject--selected {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  border-color: #8e44ad;
+  color: white;
+  transform: scale(1.03);
+}
+
+.subject-selector__subject--selected::before {
+  content: "✓";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #27ae60;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.subject-selector__subject-icon {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.subject-selector__subject--math .subject-selector__subject-icon {
+  color: #e74c3c;
+}
+
+.subject-selector__subject--science .subject-selector__subject-icon {
+  color: #27ae60;
+}
+
+.subject-selector__subject--arabic .subject-selector__subject-icon {
+  color: #f39c12;
+}
+
+.subject-selector__subject--english .subject-selector__subject-icon {
+  color: #3498db;
+}
+
+.subject-selector__subject--history .subject-selector__subject-icon {
+  color: #8e44ad;
+}
+
+.subject-selector__subject--geography .subject-selector__subject-icon {
+  color: #16a085;
+}
+
+.subject-selector__subject--selected .subject-selector__subject-icon {
+  color: white;
+  animation: bounce 0.6s ease;
+}
+
+.subject-selector__subject-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.subject-selector__subject-description {
+  font-size: 0.85rem;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+
+.subject-selector__selected-info {
+  background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+  border: 1px solid #9b59b6;
+  border-radius: 10px;
+  padding: 15px;
+  text-align: center;
+  color: #6a1b9a;
+  margin-top: 15px;
+}
+
+.subject-selector__selected-info strong {
+  color: #4a148c;
+  font-size: 1.1rem;
+}
+
+.subject-selector__filter {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.subject-selector__filter-btn {
+  background: linear-gradient(135deg, #ecf0f1, #bdc3c7);
+  border: 1px solid #bdc3c7;
+  color: #2c3e50;
+  padding: 8px 15px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.subject-selector__filter-btn:hover {
+  background: linear-gradient(135deg, #d5dbdb, #aab7b8);
+  transform: translateY(-1px);
+}
+
+.subject-selector__filter-btn--active {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: white;
+  border-color: #8e44ad;
+}
+
+.subject-selector__description {
+  margin-top: 15px;
+  padding: 15px;
+  background: linear-gradient(135deg, #e8f4f8, #d6eaf8);
+  border-radius: 10px;
+  color: #2980b9;
+  text-align: center;
+  font-style: italic;
+}
+
+@keyframes bounce {
+  0%, 20%, 50%, 80%, 100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.2);
+  }
+  60% {
+    transform: scale(1.1);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .subject-selector__grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+  
+  .subject-selector__subject {
+    padding: 15px;
+  }
+  
+  .subject-selector__subject-icon {
+    font-size: 2rem;
+  }
+  
+  .subject-selector__subject-name {
+    font-size: 1rem;
+  }
+  
+  .subject-selector__filter {
+    gap: 8px;
+  }
+  
+  .subject-selector__filter-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}

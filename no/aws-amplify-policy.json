@@ -1,0 +1,24 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "amplify:*",
+                "s3:*",
+                "cloudformation:*",
+                "iam:PassRole",
+                "iam:CreateRole",
+                "iam:AttachRolePolicy",
+                "iam:CreatePolicy", 
+                "iam:ListRoles",
+                "iam:GetRole",
+                "lambda:*",
+                "apigateway:*",
+                "logs:*",
+                "events:*"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
