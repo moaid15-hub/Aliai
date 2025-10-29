@@ -671,21 +671,34 @@ export default function ChatPage() {
       {/* Main Content */}
       <div className={`main-content ${isChatMode ? 'chat-mode' : ''} ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
         <div className={`logo-container ${isChatMode ? 'hidden' : ''}`}>
-          <div className="logo-text" style={{ direction: 'ltr' }}>
-            {'OqoolAI'.split('').map((char, index) => (
-              <span
-                key={index}
-                className="logo-letter"
-                style={{
-                  animationDelay: `${index * 0.1}s`,
-                  display: 'inline-block'
-                }}
-              >
-                {char}
-              </span>
-            ))}
+          <div className="logo-text" style={{ 
+            direction: 'ltr',
+            fontSize: '4.5rem',
+            fontWeight: '800',
+            background: 'linear-gradient(135deg, #1e40af, #3b82f6, #60a5fa)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            textShadow: '0 4px 8px rgba(59, 130, 246, 0.3)',
+            letterSpacing: '0.05em',
+            marginBottom: '1rem'
+          }}>
+            OqoolAI
           </div>
-          <div className="greeting-text">
+          <div className="greeting-text" style={{
+            fontSize: '1.5rem',
+            fontWeight: '600',
+            color: '#64748b',
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, #64748b, #94a3b8)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            textShadow: '0 2px 4px rgba(100, 116, 139, 0.2)',
+            lineHeight: '1.6',
+            maxWidth: '600px',
+            margin: '0 auto'
+          }}>
             {greeting}
           </div>
         </div>
@@ -1128,7 +1141,7 @@ export default function ChatPage() {
                 transition: 'all 0.3s ease'
               }}
             >
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="48" height="48" style={{ transform: 'rotate(90deg)' }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
               </svg>
             </div>
