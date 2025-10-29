@@ -12,7 +12,7 @@ import {
   EncouragementPhrase, 
   PerformanceLevel,
   EncouragementType 
-} from '../../../types/iraqi-teacher.types';
+} from '../../../../types/personas/iraqi-teacher.types';
 
 // ============================================
 // 1. تشجيع النجاح الكامل - Perfect Success

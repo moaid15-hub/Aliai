@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
       const cachedAudio = await getFromCache(similarKey);
       if (cachedAudio) {
         console.log('⚡ إرجاع الصوت من الكاش (تشابه دلالي!)');
-        return new NextResponse(cachedAudio, {
+        return new NextResponse(new Uint8Array(cachedAudio), {
           status: 200,
           headers: {
             'Content-Type': 'audio/mpeg',
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     const exactMatch = await getFromCache(cacheKey);
     if (exactMatch) {
       console.log('⚡ إرجاع الصوت من الكاش (مطابقة تامة!)');
-      return new NextResponse(exactMatch, {
+      return new NextResponse(new Uint8Array(exactMatch), {
         status: 200,
         headers: {
           'Content-Type': 'audio/mpeg',
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
     console.log('💾 تم حفظ الصوت + embedding في الكاش');
 
     // إرجاع الصوت
-    return new NextResponse(audioData, {
+    return new NextResponse(new Uint8Array(audioData), {
       status: 200,
       headers: {
         'Content-Type': 'audio/mpeg',

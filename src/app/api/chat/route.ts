@@ -175,10 +175,11 @@ async function sendToRealProvider(messages: any[], provider: string, image?: str
               ]
             };
           } else {
-            // رسالة نصية عادية
+            // رسالة نصية عادية - التأكد من النوع الصحيح
+            const messageRole = m.role === 'assistant' ? 'assistant' : 'user';
             return {
-              role: m.role === 'assistant' ? ('assistant' as const) : ('user' as const),
-              content: m.content
+              role: messageRole as 'user' | 'assistant',
+              content: String(m.content || '')
             };
           }
         });

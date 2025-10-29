@@ -4,7 +4,7 @@
  * المناهج العراقية للصفوف 1-6
  */
 
-import { Curriculum, CurriculumTopic } from '@/types/iraqi-teacher.types';
+import { Curriculum, CurriculumTopic } from '@/types/personas/iraqi-teacher.types';
 
 // ====================================
 // منهج الصف الأول

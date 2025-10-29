@@ -4,7 +4,8 @@
  * أنواع شخصية المعلم العراقي
  */
 
-import { ProcessingResult } from './image-processing.types';
+// Import from the correct location
+import type { ProcessingResult } from '@/lib/image-processing/image-processing.types';
 
 // ====================================
 // الصفوف والمواد
@@ -106,10 +107,35 @@ export interface ExplanationStep {
 // اللهجة البغدادية
 // ====================================
 
+export type DialectCategory = 
+  | 'greeting'
+  | 'question'
+  | 'praise'
+  | 'guidance'
+  | 'empathy'
+  | 'explanation'
+  | 'farewell'
+  | 'math_specific';
+
+export type PerformanceLevel = string; // Flexible type for various performance levels
+
+export type EncouragementType = string; // Flexible type for various encouragement categories
+
 export interface DialectPhrase {
-  standard: string; // الفصحى
-  dialect: string;  // العراقي
+  standard?: string; // الفصحى
+  dialect?: string;  // العراقي
+  arabic?: string;   // النص بالعربي (لتوافق البيانات القديمة)
+  meaning?: string;  // المعنى (لتوافق البيانات القديمة)
   context: string;  // متى نستخدمها
+  formality?: string; // نوع الأسلوب (casual, formal, warm, encouraging, supportive, etc.)
+}
+
+export interface EncouragementPhrase {
+  phrase: string;
+  performanceLevel: PerformanceLevel;
+  type: EncouragementType;
+  emoji?: string;
+  useCase?: string;
 }
 
 export interface DialectConfig {

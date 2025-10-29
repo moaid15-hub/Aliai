@@ -4,7 +4,7 @@
  * بيانات المعلم العراقي الأساسية
  */
 
-import { GradeInfo, SubjectInfo } from '@/types/iraqi-teacher.types';
+import { GradeInfo, SubjectInfo } from '@/types/personas/iraqi-teacher.types';
 
 // ====================================
 // معلومات الصفوف (1-6)

@@ -7,7 +7,7 @@
  * @module dialectPhrases
  */
 
-import { DialectPhrase, DialectCategory } from '../../../types/iraqi-teacher.types';
+import { DialectPhrase, DialectCategory } from '../../../../types/personas/iraqi-teacher.types';
 
 // ============================================
 // 1. التحيات والترحيب - Greetings

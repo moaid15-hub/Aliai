@@ -42,6 +42,8 @@
     "simple-teacher-system",
     ".next",
     "out",
-    "dist"
+    "dist",
+    "api-backups",
+    "teacher"
   ]
 }

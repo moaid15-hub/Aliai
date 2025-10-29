@@ -1,6 +1,6 @@
 // API endpoint for Teacher Chat (العمو حيدر)
 import { NextRequest, NextResponse } from 'next/server';
-import { searchEngine } from '@/lib/search';
+import { searchEngine, SearchSource } from '@/lib/search';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -109,7 +109,7 @@ async function searchYouTubeVideos(query: string): Promise<any[]> {
     // إضافة timeout 15 ثانية للبحث
     const searchPromise = searchEngine.search(query + ' شرح', {
       maxResults: 3,
-      sources: ['youtube'],
+      sources: [SearchSource.YOUTUBE],
       language: 'ar',
       country: 'sa',
     });
